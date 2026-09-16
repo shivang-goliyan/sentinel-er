@@ -5,6 +5,7 @@ import { operatorGuard } from './auth.ts'
 import type { Bus } from './bus.ts'
 import type { Config } from './config.ts'
 import type { Db } from './db/index.ts'
+import type { FactStore } from './facts/store.ts'
 import type { LogChain } from './log/chain.ts'
 import { registerLog } from './routes/log.ts'
 import { registerOperator } from './routes/operator.ts'
@@ -17,6 +18,7 @@ export interface Deps {
   db: Db['db']
   bus: Bus
   chain: LogChain
+  facts: FactStore
   switches: Switches
   requireOperator: ReturnType<typeof operatorGuard>
 }

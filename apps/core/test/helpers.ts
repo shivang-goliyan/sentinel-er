@@ -1,6 +1,7 @@
 import { Bus } from '../src/bus.ts'
 import { loadConfig } from '../src/config.ts'
 import { openDb } from '../src/db/index.ts'
+import { FactStore } from '../src/facts/store.ts'
 import { LogChain } from '../src/log/chain.ts'
 import { buildServer } from '../src/server.ts'
 import { Switches } from '../src/switches.ts'
@@ -13,7 +14,8 @@ export function makeDeps(extra: Record<string, string> = {}) {
   const bus = new Bus()
   const chain = new LogChain(sqlite, bus)
   const switches = new Switches(sqlite, bus, config)
-  return { config, sqlite, db, bus, chain, switches }
+  const facts = new FactStore(sqlite, chain)
+  return { config, sqlite, db, bus, chain, facts, switches }
 }
 
 export async function makeApp(extra: Record<string, string> = {}) {
