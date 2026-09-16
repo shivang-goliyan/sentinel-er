@@ -31,8 +31,6 @@ const Env = z.object({
   FEEDS: flag.default(false),
   // which casualty figure hospitals plan against; the high end, because under-preparing is the costly mistake
   CASUALTY_PLANNING: z.enum(['p50', 'p90']).default('p90'),
-  // off until Phase 0 shows <Start><Stream> works next to ConversationRelay
-  VOICE_LISTEN: flag.default(false),
 })
 
 export type Config = z.infer<typeof Env> & {

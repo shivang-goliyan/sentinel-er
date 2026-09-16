@@ -8,6 +8,7 @@ export const useListen = create<{ on: boolean; message: string | null }>(() => (
 let ws: WebSocket | null = null
 let ctx: AudioContext | null = null
 const nextAt: Record<string, number> = {}
+const queued: Record<string, AudioBufferSourceNode[]> = {}
 
 const ULAW = new Float32Array(256)
 for (let i = 0; i < 256; i++) {
@@ -33,6 +34,15 @@ function play(trackName: string, base64: string) {
   const at = Math.max(nextAt[trackName] ?? 0, ctx.currentTime + 0.12)
   src.start(at)
   nextAt[trackName] = at + buf.duration
+  const list = (queued[trackName] ??= [])
+  list.push(src)
+  src.onended = () => list.splice(list.indexOf(src), 1)
+}
+
+// the caller cut in: the phone stopped playing, so we do too
+function cut(trackName: string) {
+  for (const src of queued[trackName]?.splice(0) ?? []) src.stop()
+  delete nextAt[trackName]
 }
 
 export function startListening() {
@@ -46,8 +56,9 @@ export function startListening() {
   ws = new WebSocket(`${proto}//${location.host}/api/listen?op=${encodeURIComponent(pass)}`)
   ws.onopen = () => useListen.setState({ on: true, message: 'Listening. Audio plays when a call is live.' })
   ws.onmessage = (ev) => {
-    const m = JSON.parse(String(ev.data)) as { track?: string; payload?: string }
-    if (m.payload) play(m.track ?? 'mix', m.payload)
+    const m = JSON.parse(String(ev.data)) as { track?: string; payload?: string; clear?: boolean }
+    if (m.clear) cut(m.track ?? 'mix')
+    else if (m.payload) play(m.track ?? 'mix', m.payload)
   }
   ws.onclose = () => {
     useListen.setState({ on: false })
@@ -60,5 +71,6 @@ export function stopListening() {
   ws?.close()
   ws = null
   for (const k of Object.keys(nextAt)) delete nextAt[k]
+  for (const k of Object.keys(queued)) delete queued[k]
   useListen.setState({ on: false, message: null })
 }

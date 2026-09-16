@@ -40,7 +40,8 @@ The licence columns for libraries are filled from package metadata (`npx license
 | OpenFreeMap | Map tiles and styles | Free; © OpenMapTiles, © OpenStreetMap contributors |
 | Google Places API (New) | Hospital phone, hours, website | Paid Google Maps Platform |
 | Bright Data (Web Unlocker, Google Maps data) | Fetching blocked hospital pages; busyness proxy; utility shutoff notices | Paid |
-| Twilio Programmable Voice, ConversationRelay, Voice JS SDK | Phone calls | Paid |
+| Twilio Programmable Voice, Media Streams, Voice JS SDK | Phone calls | Paid |
+| Deepgram (Nova-3 speech-to-text, Aura-2 text-to-speech) | Hearing and speaking on calls | Paid |
 | Groq API | Language model inference | Groq terms |
 | Google Gemini API | Language model inference | Google AI terms |
 | OpenRouter | Language model inference (fallback) | OpenRouter terms |
@@ -66,6 +67,7 @@ The licence columns for libraries are filled from package metadata (`npx license
 | better-sqlite3, drizzle-orm | Database |
 | openai | OpenAI-compatible client for the LLM chain |
 | twilio | Twilio REST client |
+| ws | Deepgram streaming socket |
 | @twilio/voice-sdk | Browser softphone |
 | @turf/* | Geometry |
 | kdbush, geokdbush | Spatial indexes |

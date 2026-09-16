@@ -3,6 +3,8 @@ import twilio from 'twilio'
 export interface Telephony {
   createCall(opts: { to: string; from: string; twiml: string; statusCallback: string }): Promise<{ sid: string }>
   hangup(callSid: string): Promise<void>
+  // swap what the live call is doing, e.g. hand it to a person
+  update(callSid: string, twiml: string): Promise<void>
   // true when the webhook really came from Twilio
   validate(signature: string | undefined, url: string, params: Record<string, string>, query: Record<string, string>): boolean
   voiceToken(identity: string): string
@@ -41,6 +43,10 @@ export function twilioTelephony(env: TwilioEnv = process.env): Telephony | null 
 
     async hangup(callSid) {
       await client.calls(callSid).update({ status: 'completed' })
+    },
+
+    async update(callSid, twiml) {
+      await client.calls(callSid).update({ twiml })
     },
 
     validate(signature, url, params, query) {

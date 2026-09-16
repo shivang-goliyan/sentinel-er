@@ -1,11 +1,10 @@
 import formbody from '@fastify/formbody'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { maskPhone, type CallRole } from '@sentinel/shared'
+import { maskPhone } from '@sentinel/shared'
 import { z } from 'zod'
 import type { Deps } from '../server.ts'
-import { ROLES } from '../voice/roles.ts'
-import { Conversation } from '../voice/turn.ts'
-import { dialTwiml, hangupTwiml, relayTwiml, sayAndHangup } from '../voice/twiml.ts'
+import { handleMediaStream } from '../voice/media.ts'
+import { sayAndHangup, streamTwiml } from '../voice/twiml.ts'
 import { WHITELIST_ROLES, type WhitelistRole } from '../voice/whitelist.ts'
 
 const TERMINAL = new Set(['completed', 'busy', 'failed', 'no-answer', 'canceled'])
@@ -37,16 +36,6 @@ export async function registerVoice(app: FastifyInstance, deps: Deps) {
   const twiml = (reply: FastifyReply, body: string) => reply.type('text/xml').send(body)
   const now = () => new Date().toISOString()
 
-  function greetingFor(role: CallRole, callRef: string) {
-    const ctx = registry.context(callRef)!
-    return ROLES[role].greeting({
-      session: { ...ctx, callSid: '', startedAt: 0, lastHeard: '', endAfterTurn: false, ended: false },
-      facts: deps.facts,
-      chain,
-      callbackNumber: settings.from,
-    })
-  }
-
   // ---- Twilio webhooks ----
 
   app.post('/voice/inbound', async (req, reply) => {
@@ -76,14 +65,7 @@ export async function registerVoice(app: FastifyInstance, deps: Deps) {
       .run(p.CallSid, ctx.runId, label, test ? 'console' : maskPhone(from), now(), test ? 1 : 0)
     return twiml(
       reply,
-      relayTwiml({
-        base: settings.base,
-        callRef: ctx.callRef,
-        greeting: greetingFor('public', ctx.callRef),
-        record: settings.record,
-        listen: settings.listen,
-        webhookQuery: settings.webhookQuery,
-      }),
+      streamTwiml({ base: settings.base, callRef: ctx.callRef, record: settings.record, webhookQuery: settings.webhookQuery }),
     )
   })
 
@@ -97,7 +79,6 @@ export async function registerVoice(app: FastifyInstance, deps: Deps) {
       const s = registry.finish(sid)
       voice.conversations.get(sid)?.close()
       voice.conversations.delete(sid)
-      voice.sockets.delete(sid)
       sqlite
         .prepare('UPDATE calls SET ended_at = ?, ack_at = ? WHERE sid = ?')
         .run(now(), s?.ackAt ? new Date(s.ackAt).toISOString() : null, sid)
@@ -113,39 +94,6 @@ export async function registerVoice(app: FastifyInstance, deps: Deps) {
     return reply.code(204).send()
   })
 
-  app.post<{ Querystring: { ref?: string } }>('/voice/connect-action', async (req, reply) => {
-    if (!fromTwilio(req)) return reply.code(403).send('forbidden')
-    const p = req.body as Form
-    const s = registry.session(p.CallSid ?? '')
-    let data: { reason?: string } = {}
-    try {
-      data = JSON.parse(p.HandoffData ?? '{}')
-    } catch {
-      // Twilio sends nothing when the session just ended
-    }
-    if (data.reason === 'handoff') {
-      // still whitelist-only: the person who takes red-flag calls has to be on the list
-      const human = whitelist.numberFor('handoff')
-      if (human) return twiml(reply, dialTwiml(human.e164, 'Connecting you to a person now.'))
-      return twiml(reply, sayAndHangup('If this is an emergency, hang up and dial 9 1 1 now. Goodbye.'))
-    }
-    if (p.SessionStatus === 'failed' && s && !s.ended && !s.endAfterTurn) {
-      chain.append('comms', 'error', { where: 'voice relay', message: `relay dropped (${p.ErrorMessage ?? 'no detail'}), reconnecting` }, s.runId)
-      return twiml(
-        reply,
-        relayTwiml({
-          base: settings.base,
-          callRef: s.callRef,
-          greeting: 'Sorry, the line dropped for a moment. I am back.',
-          record: false,
-          listen: settings.listen,
-          webhookQuery: settings.webhookQuery,
-        }),
-      )
-    }
-    return twiml(reply, hangupTwiml)
-  })
-
   app.post('/voice/recording', async (req, reply) => {
     if (!fromTwilio(req)) return reply.code(403).send('forbidden')
     const p = req.body as Form
@@ -158,89 +106,9 @@ export async function registerVoice(app: FastifyInstance, deps: Deps) {
     return reply.code(204).send()
   })
 
-  // ---- ConversationRelay ----
+  // ---- the call's audio ----
 
-  app.get('/voice/relay', { websocket: true }, (socket) => {
-    let callSid = ''
-    socket.on('message', (raw: Buffer) => {
-      let msg: Record<string, any>
-      try {
-        msg = JSON.parse(String(raw))
-      } catch {
-        return
-      }
-      if (msg.type === 'setup') {
-        callSid = String(msg.callSid ?? '')
-        const ref = String(msg.customParameters?.callRef ?? '')
-        const resumed = Boolean(registry.session(callSid))
-        const s = registry.open(ref, callSid)
-        if (!s) {
-          socket.send(JSON.stringify({ type: 'end', handoffData: JSON.stringify({ reason: 'unknown call' }) }))
-          return
-        }
-        voice.sockets.set(callSid, socket)
-        if (resumed && voice.conversations.has(callSid)) return
-
-        sqlite.prepare("UPDATE calls SET status = 'in-progress' WHERE sid = ?").run(callSid)
-        chain.append(
-          'comms',
-          'call.started',
-          { call_sid: callSid, call_id: s.callId, role: s.role, direction: s.direction, party_label: s.partyLabel, test: s.test },
-          s.runId,
-        )
-        const convo = new Conversation({
-          session: s,
-          facts: deps.facts,
-          chain,
-          callbackNumber: settings.from,
-          llm: voice.llm,
-          send: (m) => {
-            const live = voice.sockets.get(callSid)
-            if (live && live.readyState === 1) live.send(JSON.stringify(m))
-          },
-          onAcknowledged: (sess) => {
-            sqlite.prepare('UPDATE calls SET ack_at = ? WHERE sid = ?').run(now(), sess.callSid)
-            if (sess.runId && sess.role === 'charge_nurse') {
-              chain.append('orchestrator', 'ledger', { milestone: 'acknowledged' }, sess.runId)
-            }
-          },
-          onNumberRecorded: (sess, number) => {
-            chain.append('scout', 'status', { text: `${sess.partyLabel} gave a charge-line number (${maskPhone(number)})`, state: 'done' }, sess.runId)
-          },
-        })
-        voice.conversations.set(callSid, convo)
-        void convo.start()
-        return
-      }
-      const convo = voice.conversations.get(callSid)
-      if (!convo) return
-      if (msg.type === 'prompt' && msg.last !== false) void convo.heard(String(msg.voicePrompt ?? ''))
-      else if (msg.type === 'interrupt') convo.interrupted(String(msg.utteranceUntilInterrupt ?? ''))
-      else if (msg.type === 'error') {
-        chain.append('comms', 'error', { where: 'voice relay', message: String(msg.description ?? 'unknown') }, registry.session(callSid)?.runId ?? null)
-      }
-    })
-    socket.on('close', () => {
-      if (voice.sockets.get(callSid) === socket) voice.sockets.delete(callSid)
-    })
-  })
-
-  // Twilio's copy of the audio, passed on to whoever is listening in the console
-  app.get('/voice/listen', { websocket: true }, (socket) => {
-    let callSid = ''
-    socket.on('message', (raw: Buffer) => {
-      let msg: Record<string, any>
-      try {
-        msg = JSON.parse(String(raw))
-      } catch {
-        return
-      }
-      if (msg.event === 'start') callSid = String(msg.start?.callSid ?? '')
-      if (msg.event !== 'media' || voice.listeners.size === 0) return
-      const out = JSON.stringify({ callSid, track: msg.media?.track, payload: msg.media?.payload })
-      for (const l of voice.listeners) if (l.readyState === 1) l.send(out)
-    })
-  })
+  app.get('/voice/media', { websocket: true }, (socket) => handleMediaStream(socket, deps))
 
   app.get('/api/listen', { websocket: true, preHandler: operatorFromQuery }, (socket) => {
     voice.listeners.add(socket)
@@ -258,7 +126,8 @@ export async function registerVoice(app: FastifyInstance, deps: Deps) {
       active: active ? { call_sid: active.callSid, role: active.role, party_label: active.partyLabel } : null,
       queue: queue.list(),
       record: settings.record,
-      listen: settings.listen,
+      listen: true,
+      speech: Boolean(voice.openListener && voice.speak),
     }
   })
 

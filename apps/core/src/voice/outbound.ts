@@ -5,8 +5,7 @@ import type { LogChain } from '../log/chain.ts'
 import type { Switches } from '../switches.ts'
 import type { CallRegistry } from './sessions.ts'
 import type { Telephony } from './twilio.ts'
-import { relayTwiml } from './twiml.ts'
-import { ROLES } from './roles.ts'
+import { streamTwiml } from './twiml.ts'
 import { NotWhitelisted, type Whitelist, type WhitelistRole } from './whitelist.ts'
 
 export interface OutboundRequest {
@@ -30,7 +29,6 @@ export interface VoiceSettings {
   base: string
   from: string
   record: boolean
-  listen: boolean
   webhookQuery?: string
 }
 
@@ -129,19 +127,10 @@ export class OutboundQueue {
       hospitalLabel: item.hospitalLabel,
       zip: item.zip,
     })
-    const role = ROLES[item.role]
-    const greeting = role.greeting({
-      session: { ...ctx, callSid: '', startedAt: 0, lastHeard: '', endAfterTurn: false, ended: false },
-      facts: null as never,
-      chain,
-      callbackNumber: settings.from,
-    })
-    const twiml = relayTwiml({
+    const twiml = streamTwiml({
       base: settings.base,
       callRef: ctx.callRef,
-      greeting,
       record: settings.record,
-      listen: settings.listen,
       webhookQuery: settings.webhookQuery,
     })
     const q = settings.webhookQuery ? `?${settings.webhookQuery}` : ''

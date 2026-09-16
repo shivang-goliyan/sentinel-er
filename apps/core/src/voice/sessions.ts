@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { CallRole } from '@sentinel/shared'
 
-// What we know about a call before Twilio connects the relay socket.
+// What we know about a call before Twilio opens the media stream.
 export interface CallContext {
   callRef: string
   callId?: string

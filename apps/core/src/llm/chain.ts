@@ -101,7 +101,7 @@ export function parseChain(spec: string): { provider: Provider; model: string }[
 function linksFor(lane: Lane, env: NodeJS.ProcessEnv): Link[] {
   const spec = lane === 'voice' ? env.LLM_CHAIN_VOICE : env.LLM_CHAIN_TEXT
   const chain = parseChain(
-    spec ?? (lane === 'voice' ? 'gemini:gemini-3.5-flash-lite,groq:openai/gpt-oss-20b' : 'gemini:gemini-3.5-flash,groq:openai/gpt-oss-120b'),
+    spec ?? (lane === 'voice' ? 'gemini:gemini-2.5-flash-lite,groq:openai/gpt-oss-20b' : 'gemini:gemini-2.5-flash,groq:openai/gpt-oss-120b'),
   )
   return chain.flatMap(({ provider, model }) =>
     keysFor(provider, env).map((key, keyIndex) => ({ provider, model, key, keyIndex })),
@@ -161,7 +161,13 @@ function bodyFor(link: Link, req: ChatRequest): Record<string, unknown> {
   if (req.maxTokens) body.max_tokens = req.maxTokens
   if (req.tools?.length) body.tools = req.tools
   if (req.json) body.response_format = { type: 'json_object' }
-  const effort = link.provider === 'gemini' ? process.env.GEMINI_REASONING_EFFORT : undefined
+  // thinking costs latency; calls usually want it off, the sitrep may not
+  const effort =
+    link.provider === 'gemini'
+      ? req.lane === 'voice'
+        ? (process.env.GEMINI_REASONING_EFFORT_VOICE ?? process.env.GEMINI_REASONING_EFFORT)
+        : process.env.GEMINI_REASONING_EFFORT
+      : undefined
   if (effort) body.reasoning_effort = effort
   return body
 }
