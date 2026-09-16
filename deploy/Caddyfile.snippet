@@ -1,0 +1,23 @@
+# Replace SENTINEL_HOST with the hostname once it's decided.
+SENTINEL_HOST {
+	encode zstd gzip
+
+	# the stream has to reach the browser as it's written
+	handle /api/stream {
+		reverse_proxy 127.0.0.1:8080 {
+			flush_interval -1
+		}
+	}
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+	# Twilio webhooks and the ConversationRelay / listen-in websockets
+	handle /voice/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle {
+		root * /home/ggtwo/sentinel-er/apps/console/dist
+		try_files {path} /index.html
+		file_server
+	}
+}

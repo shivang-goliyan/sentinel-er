@@ -1,0 +1,16 @@
+[Unit]
+Description=Sentinel ER science service (models, HRRR smoke)
+After=network-online.target
+
+[Service]
+User=ggtwo
+WorkingDirectory=/home/ggtwo/sentinel-er/services/science
+ExecStart=/home/ggtwo/sentinel-er/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8001 --workers 1
+Restart=always
+RestartSec=3
+MemoryMax=1200M
+CPUWeight=40
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

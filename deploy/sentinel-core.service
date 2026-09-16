@@ -1,0 +1,20 @@
+[Unit]
+Description=Sentinel ER core (API, stream, crew, voice)
+After=network-online.target sentinel-science.service
+Wants=sentinel-science.service
+
+[Service]
+User=ggtwo
+WorkingDirectory=/home/ggtwo/sentinel-er/apps/core
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node --env-file=/home/ggtwo/sentinel-er/.env src/main.ts
+Restart=always
+RestartSec=3
+# this box also runs other services; keep us inside a fence
+MemoryMax=900M
+CPUWeight=50
+NoNewPrivileges=true
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target
