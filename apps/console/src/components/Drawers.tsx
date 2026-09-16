@@ -1,6 +1,5 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { roleLabel, shortDate, utcTime } from '../lib/format'
-import { useActiveRun } from '../lib/hooks'
 import { latestAnchor } from '../store/fold'
 import {
   lockOperator,
@@ -11,6 +10,8 @@ import {
   type DrawerName,
 } from '../store/stream'
 import { Btn, EmptyState, Tag } from './ui'
+import { ModelsBody } from './drawers/ModelCards'
+import { SitrepBody } from './drawers/Sitrep'
 import { VoiceControls } from './VoiceControls'
 
 const DRAWERS: { name: DrawerName; label: string }[] = [
@@ -56,84 +57,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-function SitrepBody() {
-  const run = useActiveRun()
-  const sitrep = useConsole((s) => (run ? s.view.sitreps[run.id] : undefined))
-  const verify = useConsole((s) => s.view.verify)
-  const faults = useConsole((s) => s.view.faults)
-  const artifacts = useConsole((s) => s.view.artifacts)
-  const checks = useMemo(() => verify.filter((v) => v.channel === 'sitrep' && v.run_id === run?.id), [verify, run])
-  const pdf = artifacts.findLast((a) => a.type === 'sitrep_pdf' && a.run_id === run?.id)
-  const injected = faults.filter((f) => f.run_id === run?.id)
-
-  if (!run) return <EmptyState title="No active run">The situation report is written for the incident in progress.</EmptyState>
-  return (
-    <>
-      <Section title="Report">
-        {sitrep?.final ? (
-          <>
-            <div className="mb-2 flex items-center gap-2">
-              <Tag tone="good">verified</Tag>
-              {sitrep.final.template ? <Tag tone="warn">template</Tag> : null}
-              {pdf ? (
-                <a href={pdf.url} className="text-[13px] text-info hover:underline" target="_blank" rel="noreferrer">
-                  Download PDF
-                </a>
-              ) : null}
-            </div>
-            <pre className="whitespace-pre-wrap font-sans text-[14px] leading-relaxed text-paper">{sitrep.final.text}</pre>
-          </>
-        ) : (
-          <p className="text-[13px] text-muted">
-            Not written yet. The Analyst drafts it from verified facts once the models finish, and the Verifier checks every number before it's released.
-          </p>
-        )}
-      </Section>
-      <Section title="Verifier">
-        {injected.map((f) => (
-          <p key={f.seq} className="mb-2 text-[13px] text-warn">
-            Injected on purpose: {f.detail}
-          </p>
-        ))}
-        {checks.length === 0 ? (
-          <p className="text-[13px] text-muted">No checks for this run yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {checks.map((c) => (
-              <li key={c.seq} className="text-[13px]">
-                <div className="flex items-center gap-2">
-                  <Tag tone={c.verdict === 'pass' ? 'good' : 'bad'}>{c.verdict === 'pass' ? 'passed' : 'blocked'}</Tag>
-                  <span className="text-paper-dim">{c.target}</span>
-                  <span className="num text-[11px] text-faint">{utcTime(c.ts)}</span>
-                </div>
-                {c.findings.map((f, i) => (
-                  <p key={i} className="mt-1 pl-1 text-muted">
-                    {f.text}
-                    {f.expected ? <span className="text-paper-dim"> — source says {f.expected}</span> : null}
-                    {f.source ? <span className="text-faint"> ({f.source.name})</span> : null}
-                  </p>
-                ))}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
-      {sitrep?.drafts.length ? (
-        <Section title={`Drafts (${sitrep.drafts.length})`}>
-          {sitrep.drafts.map((d) => (
-            <details key={d.seq} className="mb-2">
-              <summary className="cursor-pointer text-[13px] text-paper-dim">
-                Draft {d.attempt} · <span className="num">{utcTime(d.ts)}</span>
-              </summary>
-              <pre className="mt-1 whitespace-pre-wrap font-sans text-[13px] text-muted">{d.text}</pre>
-            </details>
-          ))}
-        </Section>
-      ) : null}
-    </>
-  )
-}
-
 function ScoutBody() {
   const fetches = useConsole((s) => s.view.fetches)
   const rows = useMemo(() => fetches.slice().reverse(), [fetches])
@@ -161,32 +84,6 @@ function ScoutBody() {
         </li>
       ))}
     </ol>
-  )
-}
-
-function ModelsBody() {
-  const models = useConsole((s) => s.view.models)
-  if (!models.length) {
-    return (
-      <EmptyState title="No model output yet">
-        The casualty model and the smoke-to-ED model report here: validation against held-out events, the features behind each estimate, and a bias check by region.
-      </EmptyState>
-    )
-  }
-  return (
-    <ul>
-      {models
-        .slice()
-        .reverse()
-        .map((m) => (
-          <li key={m.seq} className="border-b border-line/60 px-5 py-3">
-            <p className="text-[14px] text-paper">
-              {m.model} <span className="text-faint">{m.version}</span>
-            </p>
-            <p className="num text-[11px] text-faint">{utcTime(m.ts)} UTC</p>
-          </li>
-        ))}
-    </ul>
   )
 }
 
@@ -373,6 +270,11 @@ function OperatorBody() {
   )
 }
 
+const WIDTH: Partial<Record<DrawerName, string>> = {
+  sitrep: 'w-[600px]',
+  models: 'w-[720px]',
+}
+
 export function DrawerHost() {
   const drawer = useConsole((s) => s.drawer)
   const setDrawer = useConsole((s) => s.setDrawer)
@@ -380,7 +282,7 @@ export function DrawerHost() {
   const title = DRAWERS.find((d) => d.name === drawer)?.label ?? ''
   return (
     <aside
-      className="fixed bottom-3 right-3 top-[132px] z-40 flex w-[520px] flex-col rounded-[4px] border border-line-strong bg-ink-850 shadow-[-18px_0_48px_rgb(0_0_0/0.45)]"
+      className={`fixed bottom-3 right-3 top-[132px] z-40 flex flex-col rounded-[4px] border border-line-strong bg-ink-850 shadow-[-18px_0_48px_rgb(0_0_0/0.45)] ${WIDTH[drawer] ?? 'w-[520px]'}`}
       aria-label={title}
     >
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-line px-5">
