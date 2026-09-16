@@ -47,5 +47,17 @@
       "values": [[5, 1], [20, 2], [90, 10], [180, 20]]
     },
     "functionality_bands": { "non_functional": [0, 0.25], "limited": [0.25, 0.75], "functional": [0.75, 1] }
+  },
+  "distribution_circuits": {
+    "table": "8-30",
+    "page": "8-65",
+    "units": "median PGA in g / lognormal beta",
+    "default_anchoring": "unanchored",
+    "curves": {
+      "anchored": [[0.28, 0.30], [0.40, 0.20], [0.72, 0.15], [1.10, 0.15]],
+      "unanchored": [[0.24, 0.25], [0.33, 0.20], [0.58, 0.15], [0.89, 0.15]]
+    },
+    "failed_share": [0.04, 0.12, 0.50, 0.80],
+    "failed_share_note": "share of circuits failed that defines each damage state (section 8.5.4)"
   }
 }
