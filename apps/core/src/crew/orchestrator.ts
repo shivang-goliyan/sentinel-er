@@ -12,6 +12,7 @@ import { zipsWithin, type ZipPoint } from '../geo/zips.ts'
 import { mmiToPgaG } from '../geo/shaking.ts'
 import { publishSitrepPdf, writeSitrep, type Setting } from './analyst.ts'
 import { localHour, runCasualtyStage } from './casualty.ts'
+import { runForecastStage } from './forecast.ts'
 import { runLifelineStage, type LifelineZip } from './lifeline.ts'
 import { runDroneStage } from './logistics.ts'
 import { runSurgeStage, type SurgeCandidate } from './surge.ts'
@@ -129,6 +130,37 @@ export class Orchestrator {
           chain.append('orchestrator', 'error', { where: 'run', message }, runId)
           this.status(runId, 'orchestrator', `Run stopped: ${message}`, 'error')
         })
+    })
+    return runId
+  }
+
+  // A light run for one place: no hazard, just the next three days.
+  beginForecast(label: string, lat: number, lon: number): string {
+    const now = new Date().toISOString()
+    const id = `forecast-${Date.now().toString(36)}-${randomBytes(2).toString('hex')}`
+    const event: HazardEvent = {
+      id,
+      type: 'natural',
+      title: `Next three days · ${label}`,
+      geometry: { type: 'Point', coordinates: [lon, lat] },
+      severity: {},
+      sources: [{ name: 'Operator request', id, published_at: now }],
+      detected_at: now,
+      ingested_at: now,
+      tier: 0,
+      status: 'watch',
+      is_drill: false,
+    }
+    const runId = this.begin(event, 'any_hospital', { noStages: true })
+    const { chain, facts, config } = this.deps
+    setImmediate(() => {
+      runForecastStage({ chain, facts, scienceUrl: config.SCIENCE_URL }, runId, { lat, lon, label })
+        .then((out) => {
+          // a newer run may have replaced this one already
+          if (this.deps.activeRun.current !== runId) return
+          chain.append('orchestrator', 'run.ended', out ? { status: 'done' } : { status: 'failed', note: 'no forecast' }, runId)
+        })
+        .catch(() => {})
     })
     return runId
   }
@@ -400,6 +432,8 @@ export class Orchestrator {
         })
       return runLifelineStage({ chain, facts }, runId, zips, substations, ctx.empowerSource)
     })()
+    // the three-day outlook doesn't hold up the sitrep; its facts land when HRRR answers
+    void runForecastStage({ chain, facts, scienceUrl: config.SCIENCE_URL }, runId, { lat: q.lat, lon: q.lon, label: 'the event area' }).catch(() => {})
     const drone = runDroneStage({ chain, facts }, runId, { lon: q.lon, lat: q.lat }, config.artifactsDir)
     const [zipRows] = await Promise.all([lifeline, drone])
 

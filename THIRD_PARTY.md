@@ -102,6 +102,8 @@ Checked by a test: every host named in the source must be listed here.
 | Jaiswal & Wald (2010), Earthquake Spectra 26(4); USGS PAGER `fatality.xml` | Baseline fatality model |
 | USGS PAGER-CAT and EXPO-CAT catalogues | Casualty model training data |
 | CDC MMWR 72(34) (McArdle et al., 2023) | Context for the smoke validation |
+| Gan et al. (2020), J Expo Sci Environ Epidemiol 30 | Smoke → asthma ED concentration-response (the served smoke term) |
+| Sun et al. (2021), BMJ 375:e065653 | Extreme heat → ED visit percent change |
 
 ## JavaScript / TypeScript libraries
 

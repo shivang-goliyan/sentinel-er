@@ -13,6 +13,8 @@ export const FactUnit = z.enum([
   'km',
   'magnitude',
   'count',
+  'ugm3',
+  'celsius',
   'text',
 ])
 export type FactUnit = z.infer<typeof FactUnit>

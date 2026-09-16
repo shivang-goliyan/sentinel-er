@@ -16,6 +16,7 @@ import { registerOperator } from './routes/operator.ts'
 import { registerRerun } from './routes/rerun.ts'
 import { registerStream } from './routes/stream.ts'
 import { registerDrill } from './routes/drill.ts'
+import { registerForecast } from './routes/forecast.ts'
 import { registerVoice } from './routes/voice.ts'
 import type { ActiveRun } from './runs.ts'
 import type { Switches } from './switches.ts'
@@ -68,6 +69,7 @@ export async function buildServer(deps: Omit<Deps, 'requireOperator' | 'voice'>,
   registerModels(app, full)
   registerRerun(app, full)
   registerDrill(app, full)
+  registerForecast(app, full)
 
   const startedAt = Date.now()
   app.get('/api/health', async () => ({
