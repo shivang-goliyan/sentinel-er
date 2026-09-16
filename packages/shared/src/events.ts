@@ -37,6 +37,8 @@ export const HazardEvent = z.object({
   id: z.string(),
   type: HazardType,
   title: z.string(),
+  // IANA zone for the event-local clock
+  tz: z.string().optional(),
   geometry: Geometry,
   // typed per hazard at the edges; QuakeSeverity for earthquakes
   severity: z.record(z.string(), z.unknown()),

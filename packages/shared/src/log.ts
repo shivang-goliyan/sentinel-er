@@ -77,6 +77,7 @@ export const LogBody = z.discriminatedUnion('kind', [
     payload: z.object({
       type: z.enum(['sitrep_pdf', 'drone_plan', 'recording', 'chart']),
       name: z.string(),
+      call_sid: z.string().optional(),
       url: z.string(),
       bytes: z.number().int().optional(),
     }),
@@ -100,6 +101,7 @@ export const LogBody = z.discriminatedUnion('kind', [
     kind: z.literal('call.started'),
     payload: z.object({
       ...callBase,
+      call_id: z.string().optional(),
       role: CallRole,
       direction: z.enum(['in', 'out']),
       party_label: z.string(),
