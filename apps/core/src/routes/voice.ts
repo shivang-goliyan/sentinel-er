@@ -1,0 +1,332 @@
+import formbody from '@fastify/formbody'
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import { maskPhone, type CallRole } from '@sentinel/shared'
+import { z } from 'zod'
+import type { Deps } from '../server.ts'
+import { ROLES } from '../voice/roles.ts'
+import { Conversation } from '../voice/turn.ts'
+import { dialTwiml, hangupTwiml, relayTwiml, sayAndHangup } from '../voice/twiml.ts'
+import { WHITELIST_ROLES, type WhitelistRole } from '../voice/whitelist.ts'
+
+const TERMINAL = new Set(['completed', 'busy', 'failed', 'no-answer', 'canceled'])
+const BUSY_LINE = 'The Sentinel E R drill line is on another call right now. Please call back in a minute.'
+
+type Form = Record<string, string>
+
+export async function registerVoice(app: FastifyInstance, deps: Deps) {
+  const { chain, voice, requireOperator, sqlite, activeRun } = deps
+  const { registry, queue, whitelist, telephony, settings } = voice
+
+  await app.register(formbody)
+
+  // audio elements and websockets can't send headers, so the passcode may come as ?op=
+  const operatorFromQuery = async (req: FastifyRequest, reply: FastifyReply) => {
+    const op = (req.query as Record<string, string> | undefined)?.op
+    if (op && !req.headers['x-operator']) req.headers['x-operator'] = op
+    return requireOperator(req, reply)
+  }
+
+  const fromTwilio = (req: FastifyRequest) =>
+    telephony?.validate(
+      req.headers['x-twilio-signature'] as string | undefined,
+      `${settings.base}${req.url}`,
+      (req.body as Form) ?? {},
+      (req.query as Form) ?? {},
+    ) ?? false
+
+  const twiml = (reply: FastifyReply, body: string) => reply.type('text/xml').send(body)
+  const now = () => new Date().toISOString()
+
+  function greetingFor(role: CallRole, callRef: string) {
+    const ctx = registry.context(callRef)!
+    return ROLES[role].greeting({
+      session: { ...ctx, callSid: '', startedAt: 0, lastHeard: '', endAfterTurn: false, ended: false },
+      facts: deps.facts,
+      chain,
+      callbackNumber: settings.from,
+    })
+  }
+
+  // ---- Twilio webhooks ----
+
+  app.post('/voice/inbound', async (req, reply) => {
+    if (!fromTwilio(req)) return reply.code(403).send('forbidden')
+    const p = req.body as Form
+    const from = p.From ?? ''
+    const test = from.startsWith('client:')
+    const label = test ? 'Console test call' : `Caller ${maskPhone(from)}`
+    if (registry.busy()) {
+      chain.append('comms', 'call.busy', { from_label: label }, activeRun.current)
+      return twiml(reply, sayAndHangup(BUSY_LINE))
+    }
+    const ctx = registry.prepare({
+      role: 'public',
+      direction: 'in',
+      runId: activeRun.current,
+      partyLabel: label,
+      test,
+      headlineKeys: [],
+    })
+    registry.markDialling(p.CallSid!, ctx.callRef)
+    sqlite
+      .prepare(
+        `INSERT OR IGNORE INTO calls (sid, run_id, direction, role, party_label, from_masked, status, started_at, test)
+         VALUES (?, ?, 'in', 'public', ?, ?, 'ringing', ?, ?)`,
+      )
+      .run(p.CallSid, ctx.runId, label, test ? 'console' : maskPhone(from), now(), test ? 1 : 0)
+    return twiml(
+      reply,
+      relayTwiml({
+        base: settings.base,
+        callRef: ctx.callRef,
+        greeting: greetingFor('public', ctx.callRef),
+        record: settings.record,
+        listen: settings.listen,
+        webhookQuery: settings.webhookQuery,
+      }),
+    )
+  })
+
+  app.post('/voice/status', async (req, reply) => {
+    if (!fromTwilio(req)) return reply.code(403).send('forbidden')
+    const p = req.body as Form
+    const sid = p.CallSid ?? ''
+    const status = p.CallStatus ?? 'unknown'
+    sqlite.prepare('UPDATE calls SET status = ? WHERE sid = ?').run(status, sid)
+    if (TERMINAL.has(status)) {
+      const s = registry.finish(sid)
+      voice.conversations.get(sid)?.close()
+      voice.conversations.delete(sid)
+      voice.sockets.delete(sid)
+      sqlite
+        .prepare('UPDATE calls SET ended_at = ?, ack_at = ? WHERE sid = ?')
+        .run(now(), s?.ackAt ? new Date(s.ackAt).toISOString() : null, sid)
+      const runId = s?.runId ?? (sqlite.prepare<[string], { run_id: string | null }>('SELECT run_id FROM calls WHERE sid = ?').get(sid)?.run_id ?? null)
+      chain.append(
+        'comms',
+        'call.ended',
+        { call_sid: sid, status, duration_s: Number(p.CallDuration ?? 0), acknowledged: Boolean(s?.ackAt) },
+        runId,
+      )
+      void queue.pump()
+    }
+    return reply.code(204).send()
+  })
+
+  app.post<{ Querystring: { ref?: string } }>('/voice/connect-action', async (req, reply) => {
+    if (!fromTwilio(req)) return reply.code(403).send('forbidden')
+    const p = req.body as Form
+    const s = registry.session(p.CallSid ?? '')
+    let data: { reason?: string } = {}
+    try {
+      data = JSON.parse(p.HandoffData ?? '{}')
+    } catch {
+      // Twilio sends nothing when the session just ended
+    }
+    if (data.reason === 'handoff') {
+      // still whitelist-only: the person who takes red-flag calls has to be on the list
+      const human = whitelist.numberFor('handoff')
+      if (human) return twiml(reply, dialTwiml(human.e164, 'Connecting you to a person now.'))
+      return twiml(reply, sayAndHangup('If this is an emergency, hang up and dial 9 1 1 now. Goodbye.'))
+    }
+    if (p.SessionStatus === 'failed' && s && !s.ended && !s.endAfterTurn) {
+      chain.append('comms', 'error', { where: 'voice relay', message: `relay dropped (${p.ErrorMessage ?? 'no detail'}), reconnecting` }, s.runId)
+      return twiml(
+        reply,
+        relayTwiml({
+          base: settings.base,
+          callRef: s.callRef,
+          greeting: 'Sorry, the line dropped for a moment. I am back.',
+          record: false,
+          listen: settings.listen,
+          webhookQuery: settings.webhookQuery,
+        }),
+      )
+    }
+    return twiml(reply, hangupTwiml)
+  })
+
+  app.post('/voice/recording', async (req, reply) => {
+    if (!fromTwilio(req)) return reply.code(403).send('forbidden')
+    const p = req.body as Form
+    if (p.RecordingStatus === 'completed' && p.RecordingSid) {
+      const url = `/api/recordings/${p.RecordingSid}`
+      sqlite.prepare('UPDATE calls SET recording_url = ? WHERE sid = ?').run(url, p.CallSid)
+      const runId = sqlite.prepare<[string], { run_id: string | null }>('SELECT run_id FROM calls WHERE sid = ?').get(p.CallSid ?? '')?.run_id ?? null
+      chain.append('comms', 'artifact', { type: 'recording', name: `call-${p.CallSid}.mp3`, url, call_sid: p.CallSid }, runId)
+    }
+    return reply.code(204).send()
+  })
+
+  // ---- ConversationRelay ----
+
+  app.get('/voice/relay', { websocket: true }, (socket) => {
+    let callSid = ''
+    socket.on('message', (raw: Buffer) => {
+      let msg: Record<string, any>
+      try {
+        msg = JSON.parse(String(raw))
+      } catch {
+        return
+      }
+      if (msg.type === 'setup') {
+        callSid = String(msg.callSid ?? '')
+        const ref = String(msg.customParameters?.callRef ?? '')
+        const resumed = Boolean(registry.session(callSid))
+        const s = registry.open(ref, callSid)
+        if (!s) {
+          socket.send(JSON.stringify({ type: 'end', handoffData: JSON.stringify({ reason: 'unknown call' }) }))
+          return
+        }
+        voice.sockets.set(callSid, socket)
+        if (resumed && voice.conversations.has(callSid)) return
+
+        sqlite.prepare("UPDATE calls SET status = 'in-progress' WHERE sid = ?").run(callSid)
+        chain.append(
+          'comms',
+          'call.started',
+          { call_sid: callSid, call_id: s.callId, role: s.role, direction: s.direction, party_label: s.partyLabel, test: s.test },
+          s.runId,
+        )
+        const convo = new Conversation({
+          session: s,
+          facts: deps.facts,
+          chain,
+          callbackNumber: settings.from,
+          llm: voice.llm,
+          send: (m) => {
+            const live = voice.sockets.get(callSid)
+            if (live && live.readyState === 1) live.send(JSON.stringify(m))
+          },
+          onAcknowledged: (sess) => {
+            sqlite.prepare('UPDATE calls SET ack_at = ? WHERE sid = ?').run(now(), sess.callSid)
+            if (sess.runId && sess.role === 'charge_nurse') {
+              chain.append('orchestrator', 'ledger', { milestone: 'acknowledged' }, sess.runId)
+            }
+          },
+          onNumberRecorded: (sess, number) => {
+            chain.append('scout', 'status', { text: `${sess.partyLabel} gave a charge-line number (${maskPhone(number)})`, state: 'done' }, sess.runId)
+          },
+        })
+        voice.conversations.set(callSid, convo)
+        void convo.start()
+        return
+      }
+      const convo = voice.conversations.get(callSid)
+      if (!convo) return
+      if (msg.type === 'prompt' && msg.last !== false) void convo.heard(String(msg.voicePrompt ?? ''))
+      else if (msg.type === 'interrupt') convo.interrupted(String(msg.utteranceUntilInterrupt ?? ''))
+      else if (msg.type === 'error') {
+        chain.append('comms', 'error', { where: 'voice relay', message: String(msg.description ?? 'unknown') }, registry.session(callSid)?.runId ?? null)
+      }
+    })
+    socket.on('close', () => {
+      if (voice.sockets.get(callSid) === socket) voice.sockets.delete(callSid)
+    })
+  })
+
+  // Twilio's copy of the audio, passed on to whoever is listening in the console
+  app.get('/voice/listen', { websocket: true }, (socket) => {
+    let callSid = ''
+    socket.on('message', (raw: Buffer) => {
+      let msg: Record<string, any>
+      try {
+        msg = JSON.parse(String(raw))
+      } catch {
+        return
+      }
+      if (msg.event === 'start') callSid = String(msg.start?.callSid ?? '')
+      if (msg.event !== 'media' || voice.listeners.size === 0) return
+      const out = JSON.stringify({ callSid, track: msg.media?.track, payload: msg.media?.payload })
+      for (const l of voice.listeners) if (l.readyState === 1) l.send(out)
+    })
+  })
+
+  app.get('/api/listen', { websocket: true, preHandler: operatorFromQuery }, (socket) => {
+    voice.listeners.add(socket)
+    socket.on('close', () => voice.listeners.delete(socket))
+  })
+
+  // ---- operator ----
+
+  app.get('/api/voice/state', async () => {
+    const active = registry.active()
+    return {
+      configured: Boolean(telephony && settings.from),
+      number: settings.from ? maskPhone(settings.from) : null,
+      busy: registry.busy(),
+      active: active ? { call_sid: active.callSid, role: active.role, party_label: active.partyLabel } : null,
+      queue: queue.list(),
+      record: settings.record,
+      listen: settings.listen,
+    }
+  })
+
+  const TestCall = z.object({ role: z.enum(['charge_nurse', 'lifeline_county', 'lifeline_dme', 'switchboard']) })
+  app.post('/api/calls/test', { preHandler: requireOperator }, async (req, reply) => {
+    const body = TestCall.safeParse(req.body)
+    if (!body.success) return reply.code(400).send({ error: 'Pick a role: charge_nurse, lifeline_county, lifeline_dme or switchboard.' })
+    const role = body.data.role
+    const callId = queue.enqueue({
+      role,
+      runId: activeRun.current,
+      partyLabel: `Test call: ${role.replace('_', ' ')}`,
+      reason: 'operator test call',
+      test: true,
+    })
+    return { call_id: callId }
+  })
+
+  app.post<{ Params: { sid: string } }>('/api/calls/:sid/end', { preHandler: requireOperator }, async (req, reply) => {
+    if (!telephony) return reply.code(409).send({ error: 'Twilio is not configured.' })
+    await telephony.hangup(req.params.sid)
+    return { ok: true }
+  })
+
+  const Decision = z.object({ decision: z.enum(['approved', 'declined']) })
+  app.post<{ Params: { id: string } }>('/api/approvals/:id', { preHandler: requireOperator }, async (req, reply) => {
+    const body = Decision.safeParse(req.body)
+    if (!body.success) return reply.code(400).send({ error: 'Send {"decision": "approved"} or {"decision": "declined"}.' })
+    const ok = queue.decide(req.params.id, body.data.decision, 'operator')
+    if (!ok) return reply.code(404).send({ error: 'No pending approval with that id.' })
+    return { ok: true }
+  })
+
+  app.get('/api/whitelist', { preHandler: requireOperator }, async () => ({ entries: whitelist.list() }))
+
+  const AddNumber = z.object({
+    number: z.string().min(7),
+    label: z.string().trim().min(1).max(80),
+    role: z.enum(WHITELIST_ROLES),
+    consent: z.literal(true),
+  })
+  app.post('/api/whitelist', { preHandler: requireOperator }, async (req, reply) => {
+    const body = AddNumber.safeParse(req.body)
+    if (!body.success) {
+      return reply.code(400).send({ error: 'Need a number, a label, a role, and the consent box ticked.' })
+    }
+    try {
+      whitelist.add(body.data.number, body.data.label, body.data.role as WhitelistRole, 'operator')
+      return { ok: true }
+    } catch (err) {
+      return reply.code(400).send({ error: (err as Error).message })
+    }
+  })
+
+  app.delete<{ Params: { number: string } }>('/api/whitelist/:number', { preHandler: requireOperator }, async (req, reply) => {
+    return whitelist.remove(req.params.number) ? { ok: true } : reply.code(404).send({ error: 'Not on the list.' })
+  })
+
+  app.get('/api/voice/token', { preHandler: requireOperator }, async (_req, reply) => {
+    if (!telephony) return reply.code(409).send({ error: 'Twilio is not configured.' })
+    return { identity: 'console', token: telephony.voiceToken('console') }
+  })
+
+  app.get<{ Params: { sid: string } }>('/api/recordings/:sid', { preHandler: operatorFromQuery }, async (req, reply) => {
+    if (!telephony) return reply.code(409).send({ error: 'Twilio is not configured.' })
+    if (!/^RE[0-9a-f]{32}$/.test(req.params.sid)) return reply.code(400).send({ error: 'Not a recording id.' })
+    const res = await telephony.fetchRecording(req.params.sid)
+    if (!res.ok) return reply.code(res.status).send({ error: 'Twilio would not hand over that recording.' })
+    return reply.type('audio/mpeg').send(Buffer.from(await res.arrayBuffer()))
+  })
+}

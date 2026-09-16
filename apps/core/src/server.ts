@@ -10,7 +10,10 @@ import type { LogChain } from './log/chain.ts'
 import { registerLog } from './routes/log.ts'
 import { registerOperator } from './routes/operator.ts'
 import { registerStream } from './routes/stream.ts'
+import { registerVoice } from './routes/voice.ts'
+import type { ActiveRun } from './runs.ts'
 import type { Switches } from './switches.ts'
+import { createVoice, type Voice, type VoiceOverrides } from './voice/index.ts'
 
 export interface Deps {
   config: Config
@@ -20,20 +23,30 @@ export interface Deps {
   chain: LogChain
   facts: FactStore
   switches: Switches
+  activeRun: ActiveRun
+  voice: Voice
   requireOperator: ReturnType<typeof operatorGuard>
 }
 
-export async function buildServer(deps: Omit<Deps, 'requireOperator'>) {
+// the app is thenable, so anything hung off it gets lost when awaited; look deps up here instead
+export const serverDeps = new WeakMap<object, Deps>()
+
+export async function buildServer(deps: Omit<Deps, 'requireOperator' | 'voice'>, overrides: VoiceOverrides = {}) {
   const app = Fastify({
     logger: deps.config.NODE_ENV === 'test' ? false : { level: 'info' },
     trustProxy: '127.0.0.1',
   })
-  const full: Deps = { ...deps, requireOperator: operatorGuard(deps.config.operatorPasscode) }
+  const full: Deps = {
+    ...deps,
+    voice: createVoice(deps, overrides),
+    requireOperator: operatorGuard(deps.config.operatorPasscode),
+  }
 
   await app.register(websocket)
   registerStream(app, full)
   registerLog(app, full)
   registerOperator(app, full)
+  await registerVoice(app, full)
 
   const startedAt = Date.now()
   app.get('/api/health', async () => ({
@@ -43,5 +56,6 @@ export async function buildServer(deps: Omit<Deps, 'requireOperator'>) {
     listeners: deps.bus.size,
   }))
 
+  serverDeps.set(app, full)
   return app
 }

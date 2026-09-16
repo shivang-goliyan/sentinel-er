@@ -3,6 +3,7 @@ import { loadConfig } from './config.ts'
 import { openDb } from './db/index.ts'
 import { FactStore } from './facts/store.ts'
 import { LogChain } from './log/chain.ts'
+import { ActiveRun } from './runs.ts'
 import { buildServer } from './server.ts'
 import { Switches } from './switches.ts'
 import { setTapeDefaults } from './tape.ts'
@@ -13,6 +14,7 @@ const bus = new Bus()
 const chain = new LogChain(sqlite, bus)
 const switches = new Switches(sqlite, bus, config)
 const facts = new FactStore(sqlite, chain)
+const activeRun = new ActiveRun(sqlite, bus)
 
 setTapeDefaults({
   dir: config.tapeDir,
@@ -20,7 +22,7 @@ setTapeDefaults({
   onFallback: (source, url, reason) => chain.append('system', 'fallback.used', { source, url, reason }),
 })
 
-const app = await buildServer({ config, sqlite, db, bus, chain, facts, switches })
+const app = await buildServer({ config, sqlite, db, bus, chain, facts, switches, activeRun })
 await app.listen({ host: config.HOST, port: config.PORT })
 
 let closing = false

@@ -25,6 +25,9 @@ const Env = z.object({
   LLM_CHAIN_TEXT: z.string().default('gemini:gemini-3.5-flash,groq:openai/gpt-oss-120b'),
   TIER2_MIN_POP: z.coerce.number().default(10000),
   DAMAGE_MMI: z.coerce.number().default(7),
+  VOICE_RECORD: flag.default(true),
+  // off until Phase 0 shows <Start><Stream> works next to ConversationRelay
+  VOICE_LISTEN: flag.default(false),
 })
 
 export type Config = z.infer<typeof Env> & { operatorPasscode: string; databasePath: string; tapeDir: string }
