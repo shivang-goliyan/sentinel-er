@@ -6,7 +6,9 @@ import type { Bus } from './bus.ts'
 import type { Config } from './config.ts'
 import type { Db } from './db/index.ts'
 import type { FactStore } from './facts/store.ts'
+import type { Anchors } from './log/anchor.ts'
 import type { LogChain } from './log/chain.ts'
+import { registerAnchors } from './routes/anchors.ts'
 import { registerArtifacts } from './routes/artifacts.ts'
 import { registerLog } from './routes/log.ts'
 import { registerOperator } from './routes/operator.ts'
@@ -25,6 +27,7 @@ export interface Deps {
   facts: FactStore
   switches: Switches
   activeRun: ActiveRun
+  anchors: Anchors
   voice: Voice
   requireOperator: ReturnType<typeof operatorGuard>
 }
@@ -58,6 +61,7 @@ export async function buildServer(deps: Omit<Deps, 'requireOperator' | 'voice'>,
   registerOperator(app, full)
   await registerVoice(app, full)
   registerArtifacts(app, full)
+  registerAnchors(app, full)
 
   const startedAt = Date.now()
   app.get('/api/health', async () => ({
