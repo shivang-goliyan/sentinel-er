@@ -76,6 +76,7 @@ The licence columns for libraries are filled from package metadata (`npx license
 | tailwindcss | Styling |
 | maplibre-gl, @vis.gl/react-maplibre | Map |
 | recharts | Charts |
+| @fontsource-variable/public-sans, @fontsource/barlow-condensed, @fontsource-variable/red-hat-mono | Self-hosted console fonts (Public Sans, Barlow Condensed, Red Hat Mono; SIL Open Font License) |
 | zustand | Console state |
 | vitest | Tests |
 
