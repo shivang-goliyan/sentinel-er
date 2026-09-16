@@ -20,7 +20,7 @@ The licence columns for libraries are filled from package metadata (`npx license
 | NOAA NHC GIS | Hurricane cones and wind-speed probabilities (live and archive) | Public domain |
 | NOAA HRRR (AWS Open Data) | Near-surface smoke forecast | Public domain, via the NOAA Open Data Dissemination program |
 | NWS API and HeatRisk | Alerts and heat-health risk | Public domain |
-| Open-Meteo (weather, air quality) | Weather, PM2.5 forecast and history | Free non-commercial use, CC-BY 4.0 attribution |
+| Open-Meteo (weather; air quality from Copernicus CAMS) | Weather, PM2.5 forecast and history | Free non-commercial use, CC-BY 4.0 attribution |
 | OpenAQ | PM2.5 observations | Free API key |
 | AirNow API | Air-quality observations and forecasts | Free API key |
 | EPA AirData | Historical daily PM2.5 for training | Public domain |
@@ -33,6 +33,8 @@ The licence columns for libraries are filled from package metadata (`npx license
 | NYC Health syndromic surveillance (EpiQuery) | Daily asthma ED visits for training | Public |
 | US Census Bureau (Geocoder, Centers of Population, ZCTA Gazetteer) | Geocoding, population, ZIP points | Public domain |
 | World Bank API | Country income classification | CC-BY 4.0 |
+| Natural Earth (admin-0 countries, from its GitHub mirror) | Country lookup for training events | Public domain |
+| FEMA National Shelter System open shelters | Open shelters near affected ZIPs | Public |
 | OpenStreetMap via Overpass API | POIs, substations, emergency entrances | ODbL, © OpenStreetMap contributors |
 | OpenRouteService | Hazard-avoiding routes | Free API key; ORS terms |
 | OSRM demo server | Drive times | Demo server usage policy |
@@ -46,6 +48,49 @@ The licence columns for libraries are filled from package metadata (`npx license
 | Google Gemini API | Language model inference | Google AI terms |
 | OpenRouter | Language model inference (fallback) | OpenRouter terms |
 | OpenTimestamps public calendars | Anchoring the log to Bitcoin | Free public service |
+
+## Hosts the code talks to
+
+Checked by a test: every host named in the source must be listed here.
+
+| Host | Belongs to |
+|---|---|
+| earthquake.usgs.gov | USGS Earthquake Hazards |
+| www.sciencebase.gov | USGS PAGER-CAT download |
+| raw.githubusercontent.com | USGS PAGER `fatality.xml`; Natural Earth |
+| www.ngdc.noaa.gov | NOAA NCEI HazEL |
+| firms.modaps.eosdis.nasa.gov | NASA FIRMS |
+| eonet.gsfc.nasa.gov | NASA EONET |
+| www.gdacs.org | GDACS |
+| services.swpc.noaa.gov, www.swpc.noaa.gov | NOAA SWPC |
+| noaa-hrrr-bdp-pds.s3.amazonaws.com, registry.opendata.aws | NOAA HRRR on AWS Open Data |
+| api.weather.gov, mapservices.weather.noaa.gov, www.wpc.ncep.noaa.gov | NWS API and HeatRisk |
+| api.open-meteo.com, archive-api.open-meteo.com, air-quality-api.open-meteo.com | Open-Meteo |
+| aqs.epa.gov | EPA AirData |
+| services.arcgis.com, services2.arcgis.com | Esri-hosted layers: HHS emPOWER, FEMA Hospitals RAPT, NHC |
+| gis.fema.gov | FEMA National Shelter System |
+| data.cms.gov | CMS Provider Data |
+| healthdata.gov | HHS facility capacity history |
+| data.cdc.gov | CDC NHSN |
+| a816-healthtableau.nyc.gov | NYC Health EpiQuery |
+| geocoding.geo.census.gov, www2.census.gov | US Census Bureau |
+| api.worldbank.org, datacatalogfiles.worldbank.org | World Bank |
+| overpass-api.de, overpass.private.coffee | Overpass API (main instance and a public mirror) |
+| www.openstreetmap.org | OpenStreetMap (source links) |
+| router.project-osrm.org | OSRM demo server |
+| api.openrouteservice.org | OpenRouteService |
+| tiles.openfreemap.org | OpenFreeMap |
+| places.googleapis.com | Google Places API |
+| generativelanguage.googleapis.com | Google Gemini API |
+| api.groq.com | Groq |
+| openrouter.ai | OpenRouter |
+| api.brightdata.com | Bright Data |
+| www.inova.org | Hospital website fetched through Bright Data (Phase 0 check) |
+| api.twilio.com | Twilio |
+| api.deepgram.com | Deepgram |
+| github.com | This repository (User-Agent and source links) |
+| doi.org | Citation links for published dose-response figures |
+| turkishminute.com, www.gfdrr.org | Citation links for official death tolls shown beside the grade |
 
 ## Published models and parameters
 
@@ -75,12 +120,12 @@ The licence columns for libraries are filled from package metadata (`npx license
 | playwright-core | Sitrep PDF rendering (headless Chromium) |
 | opentimestamps | Log anchoring |
 | react, react-dom, vite, @vitejs/plugin-react | Console |
-| tailwindcss | Styling |
+| tailwindcss, @tailwindcss/vite | Styling |
 | maplibre-gl, @vis.gl/react-maplibre | Map |
 | recharts | Charts |
 | @fontsource-variable/public-sans, @fontsource/barlow-condensed, @fontsource-variable/red-hat-mono | Self-hosted console fonts (Public Sans, Barlow Condensed, Red Hat Mono; SIL Open Font License) |
 | zustand | Console state |
-| typescript, @types/node | Type checking |
+| typescript, @types/node, @types/better-sqlite3, @types/d3-contour, @types/ws, @types/react, @types/react-dom | Type checking |
 | vitest | Tests |
 
 ## Python libraries
