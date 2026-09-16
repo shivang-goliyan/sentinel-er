@@ -16,7 +16,11 @@ interface Row {
 
 export class NotWhitelisted extends Error {}
 
+// the browser softphone in the presented console tab
+export const CONSOLE_CLIENT = 'client:console'
+
 export function normaliseE164(raw: string): string | null {
+  if (raw.trim() === CONSOLE_CLIENT) return CONSOLE_CLIENT
   const digits = raw.replace(/[^\d+]/g, '')
   const withPlus = digits.startsWith('+') ? digits : digits.length === 10 ? `+1${digits}` : `+${digits}`
   return /^\+[1-9]\d{7,14}$/.test(withPlus) ? withPlus : null

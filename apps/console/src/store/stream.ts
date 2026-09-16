@@ -132,6 +132,23 @@ export async function operatorPost(path: string, body: unknown, onDone?: (r: Ope
   return r
 }
 
+export async function operatorGet(path: string): Promise<OperatorResult> {
+  const pass = operatorPasscode()
+  if (!pass) {
+    askForPasscode('Operator passcode needed for this action.', () => void operatorGet(path))
+    return null
+  }
+  const res = await fetch(path, { headers: { 'x-operator': pass } }).catch(() => null)
+  if (!res) return { ok: false, message: 'Could not reach the server.' }
+  if (res.status === 401) {
+    lockOperator()
+    askForPasscode('That passcode was not accepted. Try again.', () => void operatorGet(path))
+    return null
+  }
+  const data = await res.json().catch(() => null)
+  return res.ok ? { ok: true, data } : { ok: false, message: (data as { error?: string } | null)?.error ?? `Server said ${res.status}` }
+}
+
 // --- stream ----------------------------------------------------------------
 
 let source: EventSource | null = null

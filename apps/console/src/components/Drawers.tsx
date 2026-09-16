@@ -11,6 +11,7 @@ import {
   type DrawerName,
 } from '../store/stream'
 import { Btn, EmptyState, Tag } from './ui'
+import { VoiceControls } from './VoiceControls'
 
 const DRAWERS: { name: DrawerName; label: string }[] = [
   { name: 'sitrep', label: 'Sitrep' },
@@ -332,6 +333,7 @@ function OperatorBody() {
           </Btn>
         </div>
       </Section>
+      <VoiceControls />
       <Section title="Add a log note">
         <form onSubmit={postNote} className="flex gap-2">
           <input

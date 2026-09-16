@@ -33,7 +33,16 @@ export const serverDeps = new WeakMap<object, Deps>()
 
 export async function buildServer(deps: Omit<Deps, 'requireOperator' | 'voice'>, overrides: VoiceOverrides = {}) {
   const app = Fastify({
-    logger: deps.config.NODE_ENV === 'test' ? false : { level: 'info' },
+    logger:
+      deps.config.NODE_ENV === 'test'
+        ? false
+        : {
+            level: 'info',
+            serializers: {
+              // the operator passcode can ride in ?op= for audio and sockets; keep it out of logs
+              req: (req) => ({ method: req.method, url: String(req.url).replace(/([?&](?:op|k)=)[^&]*/g, '$1***') }),
+            },
+          },
     trustProxy: '127.0.0.1',
   })
   const full: Deps = {

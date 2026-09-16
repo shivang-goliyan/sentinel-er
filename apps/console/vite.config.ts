@@ -12,6 +12,7 @@ export default defineConfig({
       '/api': {
         target: core,
         changeOrigin: true,
+        ws: true,
         // keep SSE flowing instead of letting anything buffer it
         configure: (proxy) => {
           proxy.on('proxyRes', (res) => {

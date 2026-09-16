@@ -232,6 +232,12 @@ describe('whitelist', () => {
     expect(() => a.voice.whitelist.add('7035043000', 'oops', 'charge_nurse', 'test')).toThrow(/hospital/)
   })
 
+  it('accepts the console softphone', async () => {
+    const a = await setup()
+    expect(a.voice.whitelist.add('client:console', 'Console tab', 'charge_nurse', 'test')).toBe('client:console')
+    expect(a.voice.whitelist.has('client:console')).toBe(true)
+  })
+
   it('logs numbers masked', async () => {
     const a = await setup()
     a.voice.whitelist.add(NURSE, 'Team phone', 'charge_nurse', 'test')

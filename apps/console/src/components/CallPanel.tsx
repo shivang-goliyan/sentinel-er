@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { duration, roleLabel, utcTime } from '../lib/format'
 import { useNow } from '../lib/hooks'
 import { endedCalls, pendingApprovals, type CallView, type TranscriptLine } from '../store/fold'
-import { operatorPost, useConsole } from '../store/stream'
+import { operatorPasscode, operatorPost, useConsole } from '../store/stream'
 import { Btn, EmptyState, FactChip, Panel, Tag } from './ui'
+import { PhoneBar } from './VoiceControls'
 
 const verdictTag = {
   pass: <Tag tone="good">verified</Tag>,
@@ -136,6 +137,7 @@ export function CallPanel() {
       bodyClass="flex flex-col"
       delay={180}
     >
+      <PhoneBar />
       <Approvals />
       <div className="min-h-0 flex-1">
         {activeSid && call ? (
@@ -159,6 +161,12 @@ export function CallPanel() {
       ) : null}
     </Panel>
   )
+}
+
+// the audio element can't send the operator header
+function withPasscode(url: string) {
+  const pass = operatorPasscode()
+  return pass ? `${url}?op=${encodeURIComponent(pass)}` : url
 }
 
 export function CallLog() {
@@ -189,7 +197,7 @@ export function CallLog() {
                   {c.test ? <Tag tone="info">test</Tag> : null}
                   <span className="num text-[12px] text-muted">{c.duration_s !== null ? duration(c.duration_s) : '—'}</span>
                   {rec ? (
-                    <a className="text-[12px] text-info hover:underline" href={rec.url} target="_blank" rel="noreferrer">
+                    <a className="text-[12px] text-info hover:underline" href={withPasscode(rec.url)} target="_blank" rel="noreferrer">
                       audio
                     </a>
                   ) : null}
