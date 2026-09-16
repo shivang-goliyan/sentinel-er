@@ -55,8 +55,10 @@ const system = (setting: Setting) => `You write the situation report for a hospi
 Hard rules:
 - Every number must be written as its fact id in braces, e.g. {F12}. Never type digits or number words yourself — not for counts, times, percentages, dates, or ZIP codes. If you need a number that has no fact, leave it out.
 - Values on the sheet already include their units ("24 km", "41%"). Don't repeat the unit after the id, and don't state the same fact twice in one sentence.
-- Name sources only by their id in braces, e.g. {S3}; the source list gives the names. Never type a source's name or version yourself.
+- Name sources only by their id in braces, e.g. {S3}; the source list gives the names. Never type a source's name or version yourself. List each id you used under Sources and confidence.
+- A time window that is part of a fact's label, like "within three hours" or "day two", may be written in words exactly as the label says it. Never put a fact id where a window belongs.
 - If a section has no facts, say so in one line.
+- Keep it short: name only the few hospitals that fill first and the few ZIP areas with the most residents at risk; the console has the rest.
 - Use only the facts provided. Do not invent hospitals, places, counts or sources.
 - Casualty figures are screening estimates with a range; say so.
 - No medical or triage advice. Recommended actions are about capacity, staffing, supplies, diversion and notification.
@@ -73,7 +75,7 @@ export function missingSections(text: string): string[] {
   // and the last section has to have something under it that ends like a sentence or a list item
   const tail = text.slice(text.search(/^#{2,3}\s+sources and confidence/im)).split('\n').slice(1).map((l) => l.trim()).filter(Boolean)
   const last = tail.at(-1) ?? ''
-  if (/[.!?)\]"'%]$/.test(last)) return []
+  if (/[.!?)\]}"'%]$/.test(last)) return []
   // bullets often skip the full stop; one ending on "that" or "the" was cut off
   const bullet = /^[-*]\s+\S+(\s+\S+){2,}$/.test(last)
   const dangling = /\b(a|an|the|of|to|and|or|but|with|for|in|on|at|by|from|that|which|is|are|was|were|be|as|than|about)$/i.test(last)
@@ -96,9 +98,32 @@ function sheet(facts: Fact[], sources: Map<string, string>): string {
 
 const SOURCE_REF = /\{(S\d+)\}/g
 
+// a source name typed out in full is fine; turn it into its id so its digits aren't read as claims.
+// Same for "[3]" references and "1." list markers, which count nothing.
+function sourcesToIds(text: string, sources: Map<string, string>): string {
+  const known = new Set(sources.values())
+  let out = text
+    .replace(/^(\s*)\d+[.)]\s+/gm, '$1- ')
+    .replace(/\[(\d+)\]/g, (whole, n: string) => (known.has(`S${n}`) ? `{S${n}}` : whole))
+  for (const [name, id] of [...sources].sort((a, b) => b[0].length - a[0].length)) out = out.split(name).join(`{${id}}`)
+  // "{S3}: {S3}", "{S3} ({S3})" and the like, on one line, say it once
+  return out.replace(/\{(S\d+)\}(?:[ \t]*[:(–—-]?[ \t]*\{\1\}\)?)+/g, '{$1}')
+}
+
+// In the body a source is a short "[3]"; under Sources and confidence it is "[3] its name", one per line.
 function nameSources(text: string, sources: Map<string, string>): string {
   const byId = new Map([...sources].map(([name, id]) => [id, name]))
-  return text.replace(SOURCE_REF, (whole, id: string) => byId.get(id) ?? whole)
+  const at = text.search(/^#{2,3}\s+sources and confidence/im)
+  const body = at === -1 ? text : text.slice(0, at)
+  const tail = at === -1 ? '' : text.slice(at)
+  const short = (s: string) => s.replace(SOURCE_REF, (whole, id: string) => (byId.has(id) ? `[${id.slice(1)}]` : whole))
+  const lines = tail.split('\n').flatMap((line) => {
+    const refs = [...line.matchAll(SOURCE_REF)].map((m) => m[1]!).filter((id) => byId.has(id))
+    // a bare run of ids becomes a list
+    if (refs.length > 1 && !line.replace(SOURCE_REF, '').replace(/[\s,;*-]|and/g, '')) return refs.map((id) => `- [${id.slice(1)}] ${byId.get(id)}`)
+    return [line.replace(SOURCE_REF, (whole, id: string) => (byId.has(id) ? `[${id.slice(1)}] ${byId.get(id)}` : whole))]
+  })
+  return short(body) + lines.join('\n')
 }
 
 const unknownSources = (text: string, sources: Map<string, string>) => {
@@ -111,23 +136,32 @@ function explain(findings: Finding[]): string {
     .map((f) =>
       f.kind === 'unknown_fact'
         ? `- "${f.text}" is not a fact id on the sheet.`
-        : `- "${f.text}" is a number typed directly${
-            f.fact_id ? `; if you meant ${f.fact_id}, write {${f.fact_id}} instead` : '; remove it, cite a fact, or if it is part of a source name use the source id'
-          }.`,
+        : `- "${f.text}" is a number typed directly. If it names a time window, word it exactly as the fact's label does. Otherwise cite the fact that holds it${
+            f.fact_id ? ` (perhaps {${f.fact_id}})` : ''
+          }, drop it, or if it belongs to a source's name write that source's id instead.`,
     )
     .join('\n')
 }
 
 // The fallback: dull, complete, and it can't contain an unchecked number.
 const TEMPLATE_ZIPS = 3
+const TEMPLATE_HOSPITALS = 5
 
 export function templateSitrep(facts: Fact[], setting: Setting = 'drill', sources = sourceIds(facts)): string {
   const lines = [HEADING[setting], '']
   // the worst few ZIPs are enough on paper; the console has the rest
   const zips = [...new Set(facts.filter((f) => f.key.startsWith('zip.')).map((f) => f.key.split('.')[1]))].slice(0, TEMPLATE_ZIPS)
+  // surge rows come in fill order; the hospitals that fill first are the ones worth a line
+  // (without a surge, the nearest few; hospital facts arrive nearest first)
+  const idsOf = (re: RegExp) => [...new Set(facts.filter((f) => re.test(f.key)).map((f) => f.key.split('.')[1]))].slice(0, TEMPLATE_HOSPITALS)
+  const surged = idsOf(/^surge\.[^.]+\.share$/)
+  const firstIn = surged.length ? surged : idsOf(/^hospital\./)
   const keep = (f: Fact) => {
-    if (f.key.startsWith('exposure.pop_mmi.') && f.value === 0) return false
-    if (f.key.startsWith('zip.')) return zips.includes(f.key.split('.')[1]!)
+    const [head, id] = f.key.split('.')
+    if (head === 'exposure' && f.value === 0) return false
+    if (head === 'zip') return zips.includes(id!)
+    if (head === 'hospital') return firstIn.includes(id!) && !f.key.endsWith('.phone')
+    if (head === 'surge' && id !== 'first') return firstIn.includes(id!)
     return true
   }
   for (const s of SECTIONS) {
@@ -159,6 +193,7 @@ export async function writeSitrep(d: SitrepDeps): Promise<Sitrep> {
   chain.append('analyst', 'status', { text: `Writing the situation report from ${current.length} verified facts` }, runId)
 
   let feedback = ''
+  let lastDraft = ''
   for (let attempt = 1; attempt <= MAX_DRAFTS; attempt++) {
     let text: string
     try {
@@ -169,12 +204,14 @@ export async function writeSitrep(d: SitrepDeps): Promise<Sitrep> {
         maxTokens: 4000,
         messages: [
           { role: 'system', content: system(setting) },
-          {
-            role: 'user',
-            content: `${sheet(current, sources)}${
-              feedback ? `\n\nYour last draft was sent back:\n${feedback}\nFix only those problems.` : ''
-            }`,
-          },
+          { role: 'user', content: sheet(current, sources) },
+          // a redraft sees its own draft, so it fixes the problems instead of starting over
+          ...(feedback && lastDraft
+            ? [
+                { role: 'assistant' as const, content: lastDraft },
+                { role: 'user' as const, content: `That draft was sent back:\n${feedback}\nReturn the whole report again with only those problems fixed.` },
+              ]
+            : []),
         ],
       })
       text = res.text.trim()
@@ -198,19 +235,21 @@ export async function writeSitrep(d: SitrepDeps): Promise<Sitrep> {
 
     chain.append('analyst', 'sitrep.draft', { attempt, text }, runId)
     // whatever the model wrote on top, the heading is ours
-    text = `${HEADING[setting]}\n\n${text.replace(/^\s*(?:#+\s*)?[^\n]*situation report[^\n]*\n+/i, '')}`
-    const missing = missingSections(text)
-    const badRefs = unknownSources(text, sources)
-    if (badRefs.length) missing.push(`real source ids (${badRefs.join(', ')} are not on the list)`)
-    if (missing.length) {
+    text = sourcesToIds(`${HEADING[setting]}\n\n${text.replace(/^\s*(?:#+\s*)?[^\n]*situation report[^\n]*\n+/i, '')}`, sources)
+    lastDraft = text
+    const v = verify(text, all, 'sitrep')
+    if (v.verdict !== 'block') {
+      // the numbers are fine; now make sure it's a whole report
+      const missing = missingSections(text)
+      const badRefs = unknownSources(text, sources)
+      if (badRefs.length) missing.push(`real source ids (${badRefs.join(', ')} are not on the list)`)
+      if (!missing.length) {
+        chain.append('verifier', 'verify.pass', { channel: 'sitrep', target: `sitrep draft ${attempt}`, findings: v.findings }, runId)
+        return finish(d, nameSources(v.rendered, sources), false, v.factIds)
+      }
       chain.append('analyst', 'status', { text: `Draft ${attempt} is incomplete (missing ${missing.join(', ')}), redrafting`, state: 'working' }, runId)
       feedback = `- The draft stopped early or skipped sections. Missing: ${missing.join(', ')}. Write the whole report, every section.`
       continue
-    }
-    const v = verify(text, all, 'sitrep')
-    if (v.verdict !== 'block') {
-      chain.append('verifier', 'verify.pass', { channel: 'sitrep', target: `sitrep draft ${attempt}`, findings: v.findings }, runId)
-      return finish(d, nameSources(v.rendered, sources), false, v.factIds)
     }
     chain.append('verifier', 'verify.block', { channel: 'sitrep', target: `sitrep draft ${attempt}`, text, findings: v.findings }, runId)
     chain.append('analyst', 'status', { text: `Draft ${attempt} blocked by the verifier, redrafting`, state: 'working' }, runId)

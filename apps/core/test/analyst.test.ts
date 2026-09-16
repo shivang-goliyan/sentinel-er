@@ -112,14 +112,46 @@ describe('sitrep heading', () => {
     w.facts.add(w.run, { key: 'exposure.pop_mmi.7', label: 'People at level seven', value: 31175, unit: 'people', source: { name: 'US Census 2020 block groups', retrieved_at: 'now', method: 'dataset' } })
     const s = await writeSitrep({ ...w, runId: w.run, chat: replies(`## Situation\n- {F3} people, per {S3}.\n- Beds from {S1}.`) })
     expect(s.template).toBe(false)
-    expect(s.text).toContain('31,175 people, per US Census 2020 block groups.')
-    expect(s.text).toContain('Beds from FEMA Hospitals RAPT.')
+    expect(s.text).toContain('31,175 people, per [3].')
+    expect(s.text).toContain('Beds from [1].')
+    expect(s.text).toContain('- Screening estimates, sources on the console.')
+  })
+
+  it('turns typed source names into ids', async () => {
+    const w = world()
+    w.facts.add(w.run, { key: 'exposure.pop_mmi.7', label: 'People at level seven', value: 31175, unit: 'people', source: { name: 'US Census 2020 block groups', retrieved_at: 'now', method: 'dataset' } })
+    const text = `## Incident\n- From US Census 2020 block groups.\n\n## Recommended actions\n- Staff up.\n\n## Sources and confidence\n- {S3}: US Census 2020 block groups\n{S1}, {S2}`
+    const s = await writeSitrep({ ...w, runId: w.run, chat: replies({ raw: text }) })
+    expect(s.template).toBe(false)
+    expect(s.text).toContain('- From [3].')
+    expect(s.text).toContain('- [3] US Census 2020 block groups\n- [1] FEMA Hospitals RAPT\n- [2] Sentinel casualty model')
+  })
+
+  it('reads typed references and numbered lists', async () => {
+    const w = world()
+    const text = `## Incident\n1. Beds per [1].\n2) Casualties per [2].\n\n## Recommended actions\n- Staff up.\n\n## Sources and confidence\n[1] FEMA Hospitals RAPT\n- FEMA Hospitals RAPT: {S1}\n[2]`
+    const s = await writeSitrep({ ...w, runId: w.run, chat: replies({ raw: text }) })
+    expect(s.template).toBe(false)
+    expect(s.text).toContain('- Beds per [1].\n- Casualties per [2].')
+    expect(s.text).toContain('[1] FEMA Hospitals RAPT\n- [1] FEMA Hospitals RAPT\n[2] Sentinel casualty model')
+  })
+
+  it('redrafts from its own draft', async () => {
+    const w = world()
+    const seen: string[][] = []
+    const chat: Chat = async (req) => {
+      seen.push(req.messages.map((m) => m.role))
+      const text = seen.length === 1 ? '## Incident\n- 312 beds.' : `## Incident\n- {${w.beds.id}} beds.`
+      return { text: text + ENDING, toolCalls: [], provider: 'fake', model: 'fake', ms: 1 }
+    }
+    await writeSitrep({ ...w, runId: w.run, chat })
+    expect(seen).toEqual([['system', 'user'], ['system', 'user', 'assistant', 'user']])
   })
 
   it('sends back made-up source ids', async () => {
     const w = world()
     const s = await writeSitrep({ ...w, runId: w.run, chat: replies('- Beds from {S9}.', '- Beds from {S1}.') })
-    expect(s.text).toContain('Beds from FEMA Hospitals RAPT.')
+    expect(s.text).toContain('Beds from [1].')
     const said = w.chain.after(0, 500).filter((e) => e.kind === 'status').map((e) => (e.payload as { text: string }).text)
     expect(said.some((t) => t.includes('{S9} are not on the list'))).toBe(true)
   })

@@ -252,7 +252,16 @@ export class Orchestrator {
     for (const h of hospitals) {
       const name = labelSafe(h.name)
       const at = model.at(h.lon, h.lat)
+      // clinics without a bed count stay on the map but can't take a surge, so they get no facts
       if (h.beds != null) facts.add(runId, { key: `hospital.${h.id}.beds`, label: `Beds, ${name}`, value: h.beds, unit: 'beds', source: raptSource }, 'scout')
+      if (h.beds == null) {
+        hospitalFeatures.push({
+          type: 'Feature',
+          properties: { id: h.id, name: h.name, beds: null, trauma: traumaLabel(h.trauma), mmi: Number(at.mmi.toFixed(2)), dist_km: Number((h.dist_km ?? 0).toFixed(1)) },
+          geometry: { type: 'Point', coordinates: [h.lon, h.lat] },
+        })
+        continue
+      }
       facts.add(runId, { key: `hospital.${h.id}.trauma`, label: `Trauma designation, ${name}`, value: traumaLabel(h.trauma), unit: 'text', source: raptSource }, 'scout')
       if (h.phone) facts.add(runId, { key: `hospital.${h.id}.phone`, label: `Main phone, ${name}`, value: h.phone, unit: 'text', source: raptSource }, 'scout')
       facts.add(runId, { key: `hospital.${h.id}.mmi`, label: `Shaking at ${name}`, value: Number(at.mmi.toFixed(1)), unit: 'mmi', display: `${roman(at.mmi)} (${at.mmi.toFixed(1)})`, spoken: `intensity ${roman(at.mmi)}`, tolerance: { abs: 0.1 }, source: computed(modelName) })

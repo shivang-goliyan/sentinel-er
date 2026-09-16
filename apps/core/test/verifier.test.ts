@@ -97,6 +97,38 @@ describe('verify', () => {
     expect(verify(`It sits {${depth.id}} kmh away and {${depth.id}} below.`, all(), 'sitrep').rendered).toBe('It sits 6 km kmh away and 6 km below.')
   })
 
+  it('points a wrong count at a count', () => {
+    const { store, all } = facts()
+    store.add('r1', { key: 'hospital.inova-alex.occupancy', label: 'Usual bed occupancy at Inova Alexandria', value: 68, unit: 'percent', source: src })
+    const v = verify('Inova Alexandria has 430 beds.', all(), 'sitrep')
+    expect(v.findings[0]).toMatchObject({ expected: '312' })
+  })
+
+  it('allows windows named in labels', () => {
+    const { store, all } = facts()
+    const h3 = store.add('r1', { key: 'surge.inova.arrivals_3h', label: 'Expected arrivals at Inova within three hours', value: 48, unit: 'people', source: src })
+    store.add('r1', { key: 'ed.day2.smoke_pct', label: 'Smoke asthma change on day two', value: 4, unit: 'percent', source: src })
+    expect(verify(`Inova expects {${h3.id}} arrivals within three hours, peaking on day two.`, all(), 'sitrep').verdict).toBe('pass')
+    expect(verify(`Or {${h3.id}} within 3 hours.`, all(), 'sitrep').verdict).toBe('pass')
+    expect(verify('Inova fills in three hours.', all(), 'sitrep').verdict).toBe('block')
+    expect(verify('Inova gets 48 within 3 hours.', all(), 'sitrep').verdict).toBe('block')
+    expect(verify('There are three hospitals within reach.', all(), 'sitrep').verdict).toBe('block')
+  })
+
+  it('says a leading phrase once', () => {
+    const { store, all } = facts()
+    const up = store.add('r1', { key: 'x.dep', label: 'Dependent residents', value: 10878, unit: 'people', display: 'up to 10,878', source: src })
+    expect(verify(`Up to {${up.id}} people. We count up to {${up.id}}, and the count is {${up.id}}.`, all(), 'sitrep').rendered).toBe(
+      'Up to 10,878 people. We count up to 10,878, and the count is up to 10,878.',
+    )
+  })
+
+  it('keeps one magnitude prefix', () => {
+    const { store, all } = facts()
+    const m = store.add('r1', { key: 'event.magnitude', label: 'Magnitude', value: 6.4, unit: 'magnitude', display: 'M6.4', source: src })
+    expect(verify(`An M{${m.id}} quake, or a{${m.id}}.`, all(), 'sitrep').rendered).toBe('An M6.4 quake, or aM6.4.')
+  })
+
   it('reads phone numbers by group', () => {
     const { store, all } = facts()
     store.add('r1', { key: 'hospital.inova-alex.phone', label: 'Inova Alexandria main line', value: '(703) 504-3000', unit: 'text', source: src })

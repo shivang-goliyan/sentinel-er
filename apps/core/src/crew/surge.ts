@@ -95,7 +95,10 @@ export async function runSurgeStage(
     add('capacity', `Surge-ready beds at ${name}`, r.capacity, 'beds')
     add('arrivals_3h', `Expected arrivals at ${name} within three hours`, r.arrivals.h3, 'people')
     add('arrivals_6h', `Expected arrivals at ${name} within six hours`, r.arrivals.h6, 'people')
-    add('drive', `Drive time from the damage zone to ${name}`, Math.round(byId.get(r.id)!.driveMin), 'minutes', {
+    const mins = Math.round(byId.get(r.id)!.driveMin)
+    add('drive', `Drive time from the damage zone to ${name}`, mins, 'minutes', {
+      display: `${mins} min`,
+      spoken: `${mins} minutes`,
       source: {
         name: drive.source === 'osrm' ? 'OSRM demo server (OpenStreetMap)' : 'Straight-line estimate at city speed',
         retrieved_at: now,
@@ -108,7 +111,8 @@ export async function runSurgeStage(
     } else {
       add('minutes_to_full', `Time until ${name} runs out of surge beds`, 'not within three days', 'text')
     }
-    if (r.minutes.p10 !== null) {
+    // planning on the high end makes these the same number; say it once
+    if (r.minutes.p10 !== null && r.minutes.p10 !== r.minutes.p50) {
       const t = hoursMinutes(r.minutes.p10)
       add('minutes_to_full_early', `Earliest time ${name} could fill, high casualty estimate`, r.minutes.p10, 'minutes', {
         display: t.display,

@@ -13,8 +13,19 @@ export interface Verified {
 export const SAFE_LINE = "I don't want to give you a figure I can't back up. The verified number is on the console."
 
 const PLACEHOLDER = /\{(F[0-9a-z]+)\}/g
-// a placeholder plus whatever word follows it, so "{F3} km" can lose the second "km"
-const PLACEHOLDER_NEXT = /\{(F[0-9a-z]+)\}(\s*[A-Za-z%]+)?/g
+// a placeholder with the letters stuck to its front and the word after it, so "M{F1}" and
+// "{F3} km" don't come out as "MM6.4" and "6 km km"
+const PLACEHOLDER_NEXT = /((?:[A-Za-z]+\s+){0,2})([A-Za-z]{1,3})?\{(F[0-9a-z]+)\}(\s*[A-Za-z%]+)?/g
+
+// "Up to {F9}" where the value reads "up to 10,878": say "up to" once
+function dropRepeatedLead(words: string, shown: string): string {
+  const parts = words.match(/[A-Za-z]+\s+/g) ?? []
+  for (let k = parts.length; k > 0; k--) {
+    const lead = parts.slice(-k).join('')
+    if (shown.toLowerCase().startsWith(lead.toLowerCase())) return parts.slice(0, -k).join('')
+  }
+  return words
+}
 
 function repeatsUnit(shown: string, after: string) {
   // "6 km" ends in km, "41%" in %, "VII (7.4)" in nothing
@@ -65,6 +76,19 @@ function matches(n: FoundNumber, f: Fact): boolean {
   return shown !== null && close(n.value, shown, { abs: 0 })
 }
 
+const SMALL_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
+
+// "within three hours" or "day two" name which fact is meant, and the labels say them the same way
+function namesAWindow(n: FoundNumber, text: string, labels: string[]): boolean {
+  const prev = /([a-z]+)\W*$/i.exec(text.slice(Math.max(0, n.start - 20), n.start))?.[1]?.toLowerCase()
+  const next = /^\W*([a-z]+)/i.exec(text.slice(n.end, n.end + 20))?.[1]?.toLowerCase()
+  const said = n.kind === 'words' ? n.text.toLowerCase().replace(/-/g, ' ') : (n.value !== null && SMALL_WORDS[n.value]) || ''
+  if (!said) return false
+  if (!prev) return false
+  const phrase = next ? ` ${prev} ${said} ${next} ` : null
+  return labels.some((l) => (phrase !== null && l.includes(phrase)) || (prev === 'day' && l.includes(` day ${said} `)))
+}
+
 const STOP = new Set(['with', 'from', 'that', 'this', 'have', 'there', 'their', 'about', 'which', 'expected', 'estimate'])
 const words = (t: string) => new Set(t.toLowerCase().match(/[a-z]{4,}/g)?.filter((w) => !STOP.has(w)) ?? [])
 
@@ -72,15 +96,22 @@ const words = (t: string) => new Set(t.toLowerCase().match(/[a-z]{4,}/g)?.filter
 // block can show what the source actually says.
 function likelyFact(n: FoundNumber, text: string, facts: Fact[]): Fact | undefined {
   const around = words(text.slice(Math.max(0, n.start - 60), n.end + 60))
+  const ratioish = (f: Fact) => f.unit === 'percent' || f.unit === 'probability'
   let best: Fact | undefined
   let bestScore = 0
+  let bestGap = Infinity
   for (const f of facts) {
     if (typeof f.value !== 'number') continue
+    // "430" isn't a percentage and "41%" isn't a head count
+    if ((n.kind === 'percent') !== ratioish(f)) continue
     let score = 0
     for (const w of words(`${f.label} ${f.unit}`)) if (around.has(w) || around.has(`${w}s`) || around.has(w.replace(/s$/, ''))) score++
-    if (score > bestScore) {
+    // between equally worded facts, the one closest in size
+    const gap = n.value === null ? 0 : Math.abs(Math.log10(Math.abs(n.value) + 1) - Math.log10(Math.abs(f.value) + 1))
+    if (score > bestScore || (score === bestScore && score > 0 && gap < bestGap)) {
       best = f
       bestScore = score
+      bestGap = gap
     }
   }
   return best
@@ -98,16 +129,24 @@ export function verify(text: string, facts: Fact[], channel: VerifyChannel): Ver
   const findings: Finding[] = []
   const factIds: string[] = []
 
-  const rendered = text.replace(PLACEHOLDER_NEXT, (whole, id: string, after: string | undefined) => {
-    const f = byId.get(id)
-    if (!f) {
-      findings.push({ kind: 'unknown_fact', text: `{${id}}` })
-      return whole
-    }
-    factIds.push(id)
-    const shown = channel === 'voice' ? f.spoken : f.display
-    return after && !repeatsUnit(shown, after) ? shown + after : shown
-  })
+  const rendered = text.replace(
+    PLACEHOLDER_NEXT,
+    (whole, words: string | undefined, before: string | undefined, id: string, after: string | undefined) => {
+      const f = byId.get(id)
+      if (!f) {
+        findings.push({ kind: 'unknown_fact', text: `{${id}}` })
+        return whole
+      }
+      factIds.push(id)
+      let shown = channel === 'voice' ? f.spoken : f.display
+      const glued = before && !shown.startsWith(before) ? before : ''
+      const lead = glued ? (words ?? '') : dropRepeatedLead(words ?? '', shown)
+      // the dropped words began a sentence
+      if (!glued && words && lead.length < words.length && /^[A-Z]/.test(words.slice(lead.length))) shown = shown[0]!.toUpperCase() + shown.slice(1)
+      return lead + glued + shown + (after && !repeatsUnit(shown, after) ? after : '')
+    },
+  )
+  const labels = current.map((f) => ` ${f.label.toLowerCase().replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ')} `)
 
   // blank out the placeholders so their digits aren't read as bare numbers
   const scan = text.replace(PLACEHOLDER, (m) => ' '.repeat(m.length))
@@ -115,6 +154,7 @@ export function verify(text: string, facts: Fact[], channel: VerifyChannel): Ver
   if (channel !== 'extraction') {
     for (const n of findNumbers(scan)) {
       if (ALWAYS_OK.has(n.text)) continue
+      if ((n.kind === 'words' || n.kind === 'digits') && namesAWindow(n, scan, labels)) continue
       const hit = current.find((f) => matches(n, f))
       const about = hit ?? likelyFact(n, scan, current)
       if (hit && channel === 'voice') {
