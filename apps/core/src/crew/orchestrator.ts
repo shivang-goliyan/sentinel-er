@@ -8,9 +8,26 @@ import { fetchPois, type Poi } from '../context/overpass.ts'
 import { voltageClass } from '../geo/fragility.ts'
 import { exposureByBand, BANDS } from '../geo/population.ts'
 import { contourShaking, radiusForMmi, shakingFor, type Quake, type ShakingModel } from '../geo/shaking.ts'
-import { zipsWithin } from '../geo/zips.ts'
+import { zipsWithin, type ZipPoint } from '../geo/zips.ts'
+import { mmiToPgaG } from '../geo/shaking.ts'
+import { publishSitrepPdf, writeSitrep } from './analyst.ts'
+import { localHour, runCasualtyStage } from './casualty.ts'
+import { runLifelineStage, type LifelineZip } from './lifeline.ts'
+import { runDroneStage } from './logistics.ts'
+import { runSurgeStage, type SurgeCandidate } from './surge.ts'
+import type { HospitalProfile } from '../context/hospitals.ts'
 
-type CrewDeps = Pick<Deps, 'chain' | 'facts' | 'sqlite' | 'config' | 'activeRun'>
+type CrewDeps = Pick<Deps, 'chain' | 'facts' | 'sqlite' | 'config' | 'activeRun'> & Partial<Pick<Deps, 'voice' | 'anchors'>>
+
+export interface RunContext {
+  q: Quake
+  model: ShakingModel
+  hospitals: HospitalProfile[]
+  zips: ZipPoint[]
+  empower: Map<string, EmpowerRow>
+  empowerSource: FactSource
+  pois: Promise<Poi[]>
+}
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
 export const roman = (n: number) => ROMAN[Math.max(0, Math.min(10, Math.round(n)))]!
@@ -47,7 +64,7 @@ export class Orchestrator {
   }
 
   // Creates the event and run records, writes the opening entries, and kicks the crew off.
-  begin(event: HazardEvent, mode: RunMode, opts: { asOf?: string | null } = {}): string {
+  begin(event: HazardEvent, mode: RunMode, opts: { asOf?: string | null; stopAfterContext?: boolean } = {}): string {
     const { chain, sqlite, activeRun } = this.deps
     const previous = activeRun.current
     if (previous) chain.append('orchestrator', 'run.ended', { status: 'stopped', note: 'replaced by a new run' }, previous)
@@ -93,16 +110,18 @@ export class Orchestrator {
 
     // after the response goes out; the stage does a second of synchronous geometry first
     setImmediate(() => {
-      this.contextStage(runId, event).catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err)
-        chain.append('orchestrator', 'error', { where: 'context stage', message }, runId)
-        this.status(runId, 'orchestrator', `Context stage failed: ${message}`, 'error')
-      })
+      this.contextStage(runId, event)
+        .then((ctx) => (ctx && opts.stopAfterContext !== true ? this.crewStage(runId, event, ctx) : undefined))
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err)
+          chain.append('orchestrator', 'error', { where: 'run', message }, runId)
+          this.status(runId, 'orchestrator', `Run stopped: ${message}`, 'error')
+        })
     })
     return runId
   }
 
-  async contextStage(runId: string, event: HazardEvent) {
+  async contextStage(runId: string, event: HazardEvent): Promise<RunContext | null> {
     const { facts, config, sqlite } = this.deps
     const coords = event.geometry.coordinates as number[]
     const sev = event.severity as { mag: number; depth_km: number }
@@ -281,6 +300,15 @@ export class Orchestrator {
       poisPromise.catch((err: unknown) => err as Error),
       new Promise<typeof late>((r) => setTimeout(() => r(late), OVERPASS_WAIT_MS)),
     ])
+    const ctx: RunContext = {
+      q,
+      model,
+      hospitals,
+      zips: zipPoints,
+      empower,
+      empowerSource,
+      pois: poisPromise.catch(() => [] as Poi[]),
+    }
     if (first === late) {
       this.status(runId, 'scout', 'OpenStreetMap is slow; schools and substations will follow')
       this.contextBuilt(runId)
@@ -288,11 +316,115 @@ export class Orchestrator {
         (pois) => this.addPlaces(runId, model, damageMmi, pois, retrieved),
         (err: unknown) => this.status(runId, 'scout', err instanceof Error ? err.message : String(err), 'error'),
       )
-      return
+      return ctx
     }
     if (first instanceof Error) this.status(runId, 'scout', first.message, 'error')
     else this.addPlaces(runId, model, damageMmi, first, retrieved)
     this.contextBuilt(runId)
+    return ctx
+  }
+
+  // Casualties, surge, lifeline, the drone plan, the sitrep, then the calls.
+  async crewStage(runId: string, event: HazardEvent, ctx: RunContext) {
+    const { chain, facts, config, voice, anchors } = this.deps
+    const { q, model } = ctx
+    const sev = event.severity as { origin_time?: string }
+    const pops = Object.fromEntries(BANDS.map((b) => [b, facts.byKey(runId, `exposure.pop_mmi.${b}`)?.value as number ?? 0]))
+
+    const casualty = await runCasualtyStage(
+      { chain, facts },
+      runId,
+      {
+        popMmi: pops,
+        magnitude: q.mag,
+        depthKm: q.depth_km,
+        localHour: localHour(sev.origin_time ?? event.detected_at, event.tz, q.lon),
+        // our exposure comes from US Census block groups, so this path is US-only for now
+        iso3: 'USA',
+      },
+      config.SCIENCE_URL,
+      config.CASUALTY_PLANNING,
+    )
+
+    const candidates: SurgeCandidate[] = ctx.hospitals.map((h) => ({
+      id: h.id,
+      name: h.name,
+      lat: h.lat,
+      lon: h.lon,
+      zip: h.zip,
+      state: h.state,
+      beds: h.beds,
+      pgaG: mmiToPgaG(model.at(h.lon, h.lat).mmi),
+    }))
+    const surge = casualty ? await runSurgeStage({ chain, facts }, runId, candidates, { lon: q.lon, lat: q.lat }) : []
+    if (!casualty) this.status(runId, 'analyst', 'Surge forecast skipped: no casualty estimate', 'blocked')
+
+    const lifeline = (async () => {
+      const pois = await Promise.race([ctx.pois, new Promise<Poi[]>((r) => setTimeout(() => r([]), 20_000))])
+      const substations = pois
+        .filter((p) => p.kind === 'substation')
+        .map((p) => ({
+          id: p.osm,
+          lon: p.lon,
+          lat: p.lat,
+          pgaG: mmiToPgaG(model.at(p.lon, p.lat).mmi),
+          voltage: voltageClass(p.tags.voltage) ?? 'medium',
+        }))
+      if (!substations.length) this.status(runId, 'analyst', 'No substations from OpenStreetMap yet; outage estimate uses street circuits only', 'working')
+      const zips: LifelineZip[] = ctx.zips
+        .filter((z) => z.mmi >= config.DAMAGE_MMI - 1)
+        .map((z) => {
+          const row = ctx.empower.get(z.zcta)
+          return {
+            zcta: z.zcta,
+            lon: z.lon,
+            lat: z.lat,
+            pgaG: z.pga_g,
+            powerDependent: row?.power_dependent ?? null,
+            oxygen: row?.devices.O2_Concentrators_36mo ?? null,
+            ventilators: row?.devices.Ventilators_13mo ?? null,
+            masked: isMasked(row?.power_dependent),
+          }
+        })
+      return runLifelineStage({ chain, facts }, runId, zips, substations, ctx.empowerSource)
+    })()
+    const drone = runDroneStage({ chain, facts }, runId, { lon: q.lon, lat: q.lat }, config.artifactsDir)
+    const [zipRows] = await Promise.all([lifeline, drone])
+
+    const sitrep = await writeSitrep({ chain, facts, runId, injectFault: config.DEMO_INJECT_FAULT || undefined })
+    await publishSitrepPdf({ chain, facts, runId }, sitrep, event.title, config.artifactsDir)
+
+    if (event.tier !== 2) {
+      this.status(runId, 'orchestrator', 'Below tier two: no calls, watching only', 'done')
+      return
+    }
+    if (!voice) return
+    const first = surge.find((r) => r.minutes.p50 !== null) ?? surge[0]
+    const nurseKeys = [
+      'event.magnitude',
+      'casualty.injured.planning',
+      first ? `surge.${first.id}.share` : '',
+      first ? `surge.${first.id}.arrivals_3h` : '',
+      first ? `surge.${first.id}.minutes_to_full` : '',
+      first ? `surge.${first.id}.divert_to` : '',
+    ].filter(Boolean)
+    voice.queue.enqueue({
+      role: 'charge_nurse',
+      runId,
+      partyLabel: first ? `${labelSafe(first.name)} ED charge desk (drill stand-in)` : 'ED charge desk (drill stand-in)',
+      hospitalLabel: first ? labelSafe(first.name) : undefined,
+      reason: first ? `${labelSafe(first.name)} is expected to fill first` : 'Mass-casualty pre-notification',
+      headlineKeys: nurseKeys,
+    })
+    const topZip = zipRows[0]
+    if (topZip) {
+      const zipKeys = [`zip.${topZip.zcta}.code`, `zip.${topZip.zcta}.power_dependent`, `zip.${topZip.zcta}.outage_probability`, `zip.${topZip.zcta}.restoration`]
+      voice.queue.enqueue({ role: 'lifeline_county', runId, partyLabel: 'County health (drill stand-in)', reason: 'Power-dependent residents at risk of outage', headlineKeys: zipKeys, zip: topZip.zcta })
+      voice.queue.enqueue({ role: 'lifeline_dme', runId, partyLabel: 'Home equipment supplier (drill stand-in)', reason: 'Oxygen and ventilator users at risk of outage', headlineKeys: zipKeys, zip: topZip.zcta })
+    }
+    this.status(runId, 'comms', voice.telephony ? 'Calls queued; each waits for approval' : 'Calls queued, but Twilio is not configured', 'working')
+    this.status(runId, 'orchestrator', 'Crew finished; calls are with the operator', 'done')
+    void anchors?.submit(runId)
   }
 
   private contextBuilt(runId: string) {

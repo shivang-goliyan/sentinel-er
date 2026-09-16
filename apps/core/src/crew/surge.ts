@@ -37,7 +37,8 @@ export async function runSurgeStage(
   const { chain, facts } = d
   const say = (text: string, state: 'working' | 'done' | 'blocked' = 'working') => chain.append('analyst', 'status', { text, state }, runId)
   const p10 = facts.byKey(runId, 'casualty.injured.p10')
-  const p50 = facts.byKey(runId, 'casualty.injured.p50')
+  const plan = facts.byKey(runId, 'casualty.injured.planning')
+  const p50 = plan ?? facts.byKey(runId, 'casualty.injured.p50')
   const p90 = facts.byKey(runId, 'casualty.injured.p90')
   if (!p50 || typeof p50.value !== 'number') {
     say('No casualty estimate yet, so no surge forecast', 'blocked')

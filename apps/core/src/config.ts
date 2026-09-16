@@ -29,6 +29,8 @@ const Env = z.object({
   VOICE_RECORD: flag.default(true),
   // poll the public hazard feeds; off in development so restarts don't hammer them
   FEEDS: flag.default(false),
+  // which casualty figure hospitals plan against; the high end, because under-preparing is the costly mistake
+  CASUALTY_PLANNING: z.enum(['p50', 'p90']).default('p90'),
   // off until Phase 0 shows <Start><Stream> works next to ConversationRelay
   VOICE_LISTEN: flag.default(false),
 })
