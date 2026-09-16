@@ -6,14 +6,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
+import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = ROOT / "ml" / "casualty" / "artifacts"
+SMOKE_ARTIFACTS = ROOT / "ml" / "smoke" / "artifacts"
 sys.path.insert(0, str(ROOT / "ml" / "casualty"))
+sys.path.insert(0, str(ROOT / "ml" / "smoke"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import ed_demand  # noqa: E402
 from casualty_model import POP_BINS, CasualtyModel  # noqa: E402
+from smoke_model import SmokeModel  # noqa: E402
 
 app = FastAPI(title="sentinel-science", docs_url=None, redoc_url=None)
 started = datetime.now(timezone.utc)
@@ -21,11 +27,13 @@ model = CasualtyModel(ARTIFACTS)
 countries = json.loads((ARTIFACTS / "country_meta.json").read_text())
 by_iso2 = {v["iso2"]: k for k, v in countries.items()}
 metrics = json.loads((ARTIFACTS / "metrics.json").read_text())
+smoke = SmokeModel(SMOKE_ARTIFACTS / "coefficients.json") if (SMOKE_ARTIFACTS / "coefficients.json").exists() else None
 
 
 @app.get("/health")
 def health():
-    return {"ok": True, "started_at": started.isoformat(), "casualty_model": model.info.get("variant")}
+    return {"ok": True, "started_at": started.isoformat(), "casualty_model": model.info.get("variant"),
+            "smoke_model": smoke.info.get("variant") if smoke else None}
 
 
 class CasualtyIn(BaseModel):
@@ -82,3 +90,34 @@ def casualty_card():
         if p.exists():
             charts[name] = json.loads(p.read_text())
     return {"metrics": metrics, "charts": charts}
+
+
+class PointIn(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    skip_hrrr: bool = False
+
+
+# plain def: FastAPI runs it on a worker thread, and the HRRR pull takes a while
+@app.post("/ed-demand")
+def ed_demand_route(body: PointIn):
+    if smoke is None:
+        raise HTTPException(status_code=503, detail="smoke model not trained yet; run ml/smoke/train.py")
+    try:
+        return ed_demand.build(body.lat, body.lon, smoke, skip_hrrr=body.skip_hrrr)
+    except requests.RequestException as err:
+        raise HTTPException(status_code=502, detail=f"an upstream weather service failed: {err}") from err
+    except RuntimeError as err:
+        raise HTTPException(status_code=502, detail=str(err)) from err
+
+
+@app.get("/smoke/card")
+def smoke_card():
+    if not (SMOKE_ARTIFACTS / "metrics.json").exists():
+        raise HTTPException(status_code=404, detail="no smoke metrics yet")
+    out = {"metrics": json.loads((SMOKE_ARTIFACTS / "metrics.json").read_text()), "charts": {}}
+    for name in ("validation_june2023",):
+        p = SMOKE_ARTIFACTS / "charts" / f"{name}.json"
+        if p.exists():
+            out["charts"][name] = json.loads(p.read_text())
+    return out
