@@ -11,6 +11,7 @@ import type { LogChain } from './log/chain.ts'
 import { registerAnchors } from './routes/anchors.ts'
 import { registerArtifacts } from './routes/artifacts.ts'
 import { registerLog } from './routes/log.ts'
+import { registerModels } from './routes/models.ts'
 import { registerOperator } from './routes/operator.ts'
 import { registerStream } from './routes/stream.ts'
 import { registerDrill } from './routes/drill.ts'
@@ -63,6 +64,7 @@ export async function buildServer(deps: Omit<Deps, 'requireOperator' | 'voice'>,
   await registerVoice(app, full)
   registerArtifacts(app, full)
   registerAnchors(app, full)
+  registerModels(app, full)
   registerDrill(app, full)
 
   const startedAt = Date.now()
