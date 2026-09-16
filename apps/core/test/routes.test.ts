@@ -110,4 +110,36 @@ describe('event stream', () => {
     })
     expect(seqs).toEqual([2, 3])
   })
+
+  it('sends a long history whole', async () => {
+    const { app: a, chain } = await app()
+    const big = 'x'.repeat(400_000)
+    for (let i = 0; i < 30; i++) chain.append('system', 'note', { text: `${i} ${big}` })
+    await a.listen({ port: 0, host: '127.0.0.1' })
+    const port = (a.server.address() as { port: number }).port
+
+    // a slow reader: pauses between chunks, so the server has to wait for it
+    const last = await new Promise<number>((resolve, reject) => {
+      let seen = 0
+      const req = request({ host: '127.0.0.1', port, path: '/api/stream?after=0' }, (res) => {
+        let tail = ''
+        res.setEncoding('utf8')
+        res.on('data', (chunk: string) => {
+          const text = tail + chunk
+          for (const m of text.matchAll(/^id: (\d+)$/gm)) seen = Math.max(seen, Number(m[1]))
+          tail = text.slice(-200)
+          if (seen === 30) {
+            req.destroy()
+            resolve(seen)
+          }
+          res.pause()
+          setTimeout(() => res.resume(), 2)
+        })
+        res.on('close', () => (seen === 30 ? undefined : reject(new Error(`stream closed after ${seen}`))))
+      })
+      req.on('error', (err) => (seen === 30 ? undefined : reject(err)))
+      req.end()
+    })
+    expect(last).toBe(30)
+  }, 30_000)
 })
