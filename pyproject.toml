@@ -1,0 +1,23 @@
+[project]
+name = "sentinel-science"
+version = "0.1.0"
+description = "Models and data pipelines for Sentinel ER"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "lightgbm",
+    "pandas",
+    "numpy",
+    "scikit-learn",
+    "matplotlib",
+    "requests",
+    "openpyxl",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["ml"]

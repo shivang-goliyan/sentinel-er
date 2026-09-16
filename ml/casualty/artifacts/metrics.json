@@ -1,0 +1,104 @@
+{
+  "quantiles": [
+    0.1,
+    0.5,
+    0.9
+  ],
+  "params": {
+    "objective": "quantile",
+    "learning_rate": 0.03,
+    "n_estimators": 600,
+    "num_leaves": 15,
+    "min_child_samples": 20,
+    "subsample": 0.8,
+    "subsample_freq": 1,
+    "colsample_bytree": 0.8,
+    "reg_lambda": 1.0,
+    "n_jobs": 2,
+    "random_state": 11
+  },
+  "cv": {
+    "without_pager_alert": {
+      "deaths": {
+        "all_rows_weighted": {
+          "rows": 6003,
+          "bin_accuracy": 0.8884,
+          "median_abs_log10_error": 0.0,
+          "interval_80_coverage": 0.9572
+        },
+        "rows_above_zero": {
+          "rows": 630,
+          "bin_accuracy": 0.1397,
+          "median_abs_log10_error": 0.6234,
+          "interval_80_coverage": 0.5921
+        }
+      },
+      "injured": {
+        "all_rows_weighted": {
+          "rows": 965,
+          "bin_accuracy": 0.4518,
+          "median_abs_log10_error": 0.5095,
+          "interval_80_coverage": 0.658
+        },
+        "rows_above_zero": {
+          "rows": 941,
+          "bin_accuracy": 0.4633,
+          "median_abs_log10_error": 0.5004,
+          "interval_80_coverage": 0.6706
+        }
+      }
+    },
+    "with_pager_alert": {
+      "deaths": {
+        "all_rows_weighted": {
+          "rows": 6003,
+          "bin_accuracy": 0.8871,
+          "median_abs_log10_error": 0.0,
+          "interval_80_coverage": 0.9567
+        },
+        "rows_above_zero": {
+          "rows": 630,
+          "bin_accuracy": 0.146,
+          "median_abs_log10_error": 0.6098,
+          "interval_80_coverage": 0.5873
+        }
+      },
+      "injured": {
+        "all_rows_weighted": {
+          "rows": 965,
+          "bin_accuracy": 0.4642,
+          "median_abs_log10_error": 0.5053,
+          "interval_80_coverage": 0.656
+        },
+        "rows_above_zero": {
+          "rows": 941,
+          "bin_accuracy": 0.4761,
+          "median_abs_log10_error": 0.4977,
+          "interval_80_coverage": 0.6684
+        }
+      }
+    }
+  },
+  "target_transform": "log1p",
+  "folds": "5-fold GroupKFold by earthquake sequence",
+  "cv_vs_pager_baseline": {
+    "note": "Baseline = PAGER empirical model with the epicentre country's parameters on the total exposure (an approximation of the per-country original). The baseline was calibrated on much of the 1960-2007 catalogue, so its pre-2008 scores are partly in-sample; the from_2008 rows are the fairer comparison.",
+    "all_rows": {
+      "rows": 5855,
+      "baseline_bin_accuracy": 0.7313,
+      "model_bin_accuracy": 0.8888,
+      "baseline_median_abs_log10_error_deaths_gt0": 0.4952,
+      "model_median_abs_log10_error_deaths_gt0": 0.6258
+    },
+    "from_2008": {
+      "rows": 337,
+      "baseline_bin_accuracy": 0.8249,
+      "model_bin_accuracy": 0.8872,
+      "baseline_median_abs_log10_error_deaths_gt0": 0.338,
+      "model_median_abs_log10_error_deaths_gt0": 0.6378
+    }
+  },
+  "default_variant": "without_pager_alert",
+  "default_reason": "pager_alert did not clearly beat the model without it on out-of-fold deadly events (needs >= 0.1 log10 lower error and >= 2 points bin accuracy), and PAGER's alert can be revised after the fact, so the default leaves it out",
+  "wall_seconds": 16.4
+}
