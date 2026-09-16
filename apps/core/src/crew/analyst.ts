@@ -8,12 +8,28 @@ import { renderPdf, sitrepHtml } from '../pdf/render.ts'
 
 export type Chat = (req: ChatRequest) => Promise<ChatResult>
 
+// what the report must say about itself at the top
+export type Setting = 'drill' | 'rerun' | 'live'
+
+export const HEADING: Record<Setting, string> = {
+  drill: 'DRILL — Sentinel ER situation report',
+  rerun: 'RERUN OF A PAST EVENT — Sentinel ER situation report',
+  live: 'Sentinel ER situation report',
+}
+
+const OCCASION: Record<Setting, string> = {
+  drill: 'during a DRILL',
+  rerun: 'for a rerun of a past earthquake, an exercise run with what was known at the time',
+  live: 'for a live event, as decision support that a person reviews before acting',
+}
+
 export interface SitrepDeps {
   chain: LogChain
   facts: FactStore
   runId: string
   chat?: Chat
   injectFault?: string
+  setting?: Setting
 }
 
 export interface Sitrep {
@@ -34,14 +50,33 @@ const SECTIONS: { title: string; prefixes: string[] }[] = [
   { title: 'Access', prefixes: ['route.'] },
 ]
 
-const SYSTEM = `You write the situation report for a hospital incident commander during a DRILL, structured like the HICS incident briefing form. Never write form numbers.
+const system = (setting: Setting) => `You write the situation report for a hospital incident commander ${OCCASION[setting]}, structured like the HICS incident briefing form. Never write form numbers.
 
 Hard rules:
 - Every number must be written as its fact id in braces, e.g. {F12}. Never type digits or number words yourself — not for counts, times, percentages, dates, or ZIP codes. If you need a number that has no fact, leave it out.
+- Values on the sheet already include their units ("24 km", "41%"). Don't repeat the unit after the id, and don't state the same fact twice in one sentence.
 - Use only the facts provided. Do not invent hospitals, places, counts or sources.
 - Casualty figures are screening estimates with a range; say so.
 - No medical or triage advice. Recommended actions are about capacity, staffing, supplies, diversion and notification.
-- Markdown only. Start with the line "DRILL — Sentinel ER situation report". Then these sections as "## " headings, in order: Incident, Situation, Expected casualties, Hospital surge, Community, Recommended actions, Sources and confidence. Keep it to one page.`
+- Markdown only. Start with the line "${HEADING[setting]}". Then these sections as "## " headings, in order: Incident, Situation, Expected casualties, Hospital surge, Community, Recommended actions, Sources and confidence. Keep it to one page.`
+
+// A draft that stops mid-sentence can still pass the number check. These sections come first and
+// last, so a cut-off draft is missing at least the final one.
+const REQUIRED = ['Incident', 'Recommended actions', 'Sources and confidence']
+
+export function missingSections(text: string): string[] {
+  const heads = [...text.matchAll(/^#{2,3}\s+(.+?)\s*$/gm)].map((m) => m[1]!.toLowerCase())
+  const missing = REQUIRED.filter((r) => !heads.some((h) => h.startsWith(r.toLowerCase())))
+  if (missing.length) return missing
+  // and the last section has to have something under it that ends like a sentence or a list item
+  const tail = text.slice(text.search(/^#{2,3}\s+sources and confidence/im)).split('\n').slice(1).map((l) => l.trim()).filter(Boolean)
+  const last = tail.at(-1) ?? ''
+  if (/[.!?)\]"'%]$/.test(last)) return []
+  // bullets often skip the full stop; one ending on "that" or "the" was cut off
+  const bullet = /^[-*]\s+\S+(\s+\S+){2,}$/.test(last)
+  const dangling = /\b(a|an|the|of|to|and|or|but|with|for|in|on|at|by|from|that|which|is|are|was|were|be|as|than|about)$/i.test(last)
+  return bullet && !dangling ? [] : ['Sources and confidence (it stops early)']
+}
 
 function sheet(facts: Fact[]): string {
   return facts.map((f) => `${f.id} | ${f.key} | ${f.label} | ${f.display} | source: ${f.source.name}`).join('\n')
@@ -60,8 +95,8 @@ function explain(findings: Finding[]): string {
 }
 
 // The fallback: dull, complete, and it can't contain an unchecked number.
-export function templateSitrep(facts: Fact[]): string {
-  const lines = ['DRILL — Sentinel ER situation report', '']
+export function templateSitrep(facts: Fact[], setting: Setting = 'drill'): string {
+  const lines = [HEADING[setting], '']
   for (const s of SECTIONS) {
     const picked = facts.filter((f) => s.prefixes.some((p) => f.key.startsWith(p)))
     if (!picked.length) continue
@@ -82,6 +117,7 @@ export function templateSitrep(facts: Fact[]): string {
 
 export async function writeSitrep(d: SitrepDeps): Promise<Sitrep> {
   const { chain, facts, runId } = d
+  const setting = d.setting ?? 'drill'
   const chat = d.chat ?? llmChat
   const current = facts.latest(runId)
   const all = facts.all(runId)
@@ -94,18 +130,23 @@ export async function writeSitrep(d: SitrepDeps): Promise<Sitrep> {
       const res = await chat({
         lane: 'text',
         temperature: 0.2,
-        maxTokens: 1400,
+        // thinking models spend from the same budget before writing a word
+        maxTokens: 4000,
         messages: [
-          { role: 'system', content: SYSTEM },
+          { role: 'system', content: system(setting) },
           {
             role: 'user',
             content: `Facts (id | key | label | value | source):\n${sheet(current)}${
-              feedback ? `\n\nYour last draft was blocked by the verifier:\n${feedback}\nFix only those problems.` : ''
+              feedback ? `\n\nYour last draft was sent back:\n${feedback}\nFix only those problems.` : ''
             }`,
           },
         ],
       })
       text = res.text.trim()
+      if (!text) {
+        chain.append('analyst', 'status', { text: `Draft ${attempt} came back empty, asking again`, state: 'working' }, runId)
+        continue
+      }
     } catch (err) {
       chain.append('analyst', 'status', { text: `Model unavailable (${(err as Error).message}); using the template`, state: 'blocked' }, runId)
       break
@@ -121,6 +162,14 @@ export async function writeSitrep(d: SitrepDeps): Promise<Sitrep> {
     }
 
     chain.append('analyst', 'sitrep.draft', { attempt, text }, runId)
+    // whatever the model wrote on top, the heading is ours
+    text = `${HEADING[setting]}\n\n${text.replace(/^\s*(?:#+\s*)?[^\n]*situation report[^\n]*\n+/i, '')}`
+    const missing = missingSections(text)
+    if (missing.length) {
+      chain.append('analyst', 'status', { text: `Draft ${attempt} is incomplete (missing ${missing.join(', ')}), redrafting`, state: 'working' }, runId)
+      feedback = `- The draft stopped early or skipped sections. Missing: ${missing.join(', ')}. Write the whole report, every section.`
+      continue
+    }
     const v = verify(text, all, 'sitrep')
     if (v.verdict !== 'block') {
       chain.append('verifier', 'verify.pass', { channel: 'sitrep', target: `sitrep draft ${attempt}`, findings: v.findings }, runId)
@@ -131,7 +180,7 @@ export async function writeSitrep(d: SitrepDeps): Promise<Sitrep> {
     feedback = explain(v.findings)
   }
 
-  const fallback = verify(templateSitrep(current), all, 'sitrep')
+  const fallback = verify(templateSitrep(current, setting), all, 'sitrep')
   chain.append('verifier', 'verify.pass', { channel: 'sitrep', target: 'template sitrep', findings: fallback.findings }, runId)
   return finish(d, fallback.rendered, true, fallback.factIds)
 }
@@ -144,6 +193,7 @@ export async function publishSitrepPdf(d: SitrepDeps, sitrep: Sitrep, title: str
       generatedAt: new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC',
       facts: d.facts.latest(d.runId).filter((f) => sitrep.factIds.includes(f.id)),
       template: sitrep.template,
+      setting: d.setting ?? 'drill',
     })
     const out = await renderPdf(html, join(artifactsDir, d.runId), 'sitrep.pdf')
     d.chain.append(

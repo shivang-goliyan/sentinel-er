@@ -13,6 +13,16 @@ export interface Verified {
 export const SAFE_LINE = "I don't want to give you a figure I can't back up. The verified number is on the console."
 
 const PLACEHOLDER = /\{(F[0-9a-z]+)\}/g
+// a placeholder plus whatever word follows it, so "{F3} km" can lose the second "km"
+const PLACEHOLDER_NEXT = /\{(F[0-9a-z]+)\}(\s*[A-Za-z%]+)?/g
+
+function repeatsUnit(shown: string, after: string) {
+  // "6 km" ends in km, "41%" in %, "VII (7.4)" in nothing
+  const unit = /(?:^|[\s\d])([a-z]+|%)$/i.exec(shown.trim())?.[1]?.toLowerCase()
+  const next = after.trim().toLowerCase()
+  if (!unit || !next) return false
+  return next === unit || next === `${unit}s` || `${next}s` === unit
+}
 const ALWAYS_OK = new Set(['911'])
 
 function close(a: number, b: number, tol: Fact['tolerance']) {
@@ -22,13 +32,33 @@ function close(a: number, b: number, tol: Fact['tolerance']) {
   return Math.abs(a - b) <= slack + 1e-9
 }
 
+// "(703) 504-3000" and "+17035043000" both become 703 / 504 / 3000
+function digitGroups(display: string): string[] {
+  const groups = display.match(/\d+/g) ?? []
+  const national = groups.join('').replace(/^1(?=\d{10}$)/, '')
+  if (national.length === 10 && groups.every((g) => g.length >= 3)) return [national.slice(0, 3), national.slice(3, 6), national.slice(6)]
+  return groups
+}
+
+// Text facts hold numbers too (ZIP codes, street and phone numbers). A said number has to be one
+// of their digit groups, or several in a row; "430" is not in "(703) 504-3000".
+function inText(said: string, display: string): boolean {
+  const digits = said.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '')
+  if (!digits) return false
+  const groups = digitGroups(display)
+  for (let i = 0; i < groups.length; i++) {
+    let run = ''
+    for (let j = i; j < groups.length && run.length < digits.length; j++) {
+      run += groups[j]
+      if (run === digits) return true
+    }
+  }
+  return false
+}
+
 function matches(n: FoundNumber, f: Fact): boolean {
   if (n.value === null) return false
-  if (typeof f.value === 'string') {
-    // text facts can hold numbers too (ZIP codes, street numbers, phone numbers)
-    const digits = f.display.replace(/\D/g, '')
-    return digits.length > 0 && digits.includes(n.text.replace(/\D/g, ''))
-  }
+  if (typeof f.value === 'string') return inText(n.text, f.display)
   if (close(n.value, f.value, f.tolerance)) return true
   if (f.unit === 'probability' && close(n.value, f.value * 100, { abs: 0.5 })) return true
   const shown = numberIn(f.display)
@@ -68,14 +98,15 @@ export function verify(text: string, facts: Fact[], channel: VerifyChannel): Ver
   const findings: Finding[] = []
   const factIds: string[] = []
 
-  const rendered = text.replace(PLACEHOLDER, (whole, id: string) => {
+  const rendered = text.replace(PLACEHOLDER_NEXT, (whole, id: string, after: string | undefined) => {
     const f = byId.get(id)
     if (!f) {
-      findings.push({ kind: 'unknown_fact', text: whole })
+      findings.push({ kind: 'unknown_fact', text: `{${id}}` })
       return whole
     }
     factIds.push(id)
-    return channel === 'voice' ? f.spoken : f.display
+    const shown = channel === 'voice' ? f.spoken : f.display
+    return after && !repeatsUnit(shown, after) ? shown + after : shown
   })
 
   // blank out the placeholders so their digits aren't read as bare numbers

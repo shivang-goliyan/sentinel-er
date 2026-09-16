@@ -10,7 +10,7 @@ import { exposureByBand, BANDS } from '../geo/population.ts'
 import { contourShaking, radiusForMmi, shakingFor, type Quake, type ShakingModel } from '../geo/shaking.ts'
 import { zipsWithin, type ZipPoint } from '../geo/zips.ts'
 import { mmiToPgaG } from '../geo/shaking.ts'
-import { publishSitrepPdf, writeSitrep } from './analyst.ts'
+import { publishSitrepPdf, writeSitrep, type Setting } from './analyst.ts'
 import { localHour, runCasualtyStage } from './casualty.ts'
 import { runLifelineStage, type LifelineZip } from './lifeline.ts'
 import { runDroneStage } from './logistics.ts'
@@ -403,8 +403,10 @@ export class Orchestrator {
     const drone = runDroneStage({ chain, facts }, runId, { lon: q.lon, lat: q.lat }, config.artifactsDir)
     const [zipRows] = await Promise.all([lifeline, drone])
 
-    const sitrep = await writeSitrep({ chain, facts, runId, injectFault: config.DEMO_INJECT_FAULT || undefined })
-    await publishSitrepPdf({ chain, facts, runId }, sitrep, event.title, config.artifactsDir)
+    const mode = this.deps.sqlite.prepare<[string], { mode: string }>('SELECT mode FROM runs WHERE id = ?').get(runId)?.mode
+    const setting: Setting = event.is_drill ? 'drill' : mode === 'rerun' || mode === 'replay' || mode === 'time_machine' ? 'rerun' : 'live'
+    const sitrep = await writeSitrep({ chain, facts, runId, setting, injectFault: config.DEMO_INJECT_FAULT || undefined })
+    await publishSitrepPdf({ chain, facts, runId, setting }, sitrep, event.title, config.artifactsDir)
 
     if (event.tier !== 2) {
       this.status(runId, 'orchestrator', 'Below tier two: no calls, watching only', 'done')

@@ -29,7 +29,7 @@ export function registerRerun(app: FastifyInstance, deps: Deps) {
     const name = body.data.scenario
     const { pager, final, truth } = loadScenario(name)
     const own = SCENARIOS[name].ownPipeline
-    const event = rerunEvent(pager, own)
+    const event = rerunEvent(own ? final : pager, own)
 
     if (!own) {
       const runId = crew.begin(event, 'rerun', { noStages: true })

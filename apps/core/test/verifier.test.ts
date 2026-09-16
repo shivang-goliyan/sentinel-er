@@ -89,6 +89,25 @@ describe('verify', () => {
     expect(verify('That is ZIP 22314.', all(), 'voice').verdict).toBe('pass_with_note')
   })
 
+  it('drops a repeated unit', () => {
+    const { store, all } = facts()
+    const depth = store.add('r1', { key: 'event.depth_km', label: 'Depth', value: 6, unit: 'km', display: '6 km', source: src })
+    const pct = store.add('r1', { key: 'x.pct', label: 'Change', value: 41, unit: 'percent', display: '41%', source: src })
+    expect(verify(`At {${depth.id}} km depth, up {${pct.id}}% today.`, all(), 'sitrep').rendered).toBe('At 6 km depth, up 41% today.')
+    expect(verify(`It sits {${depth.id}} kmh away and {${depth.id}} below.`, all(), 'sitrep').rendered).toBe('It sits 6 km kmh away and 6 km below.')
+  })
+
+  it('reads phone numbers by group', () => {
+    const { store, all } = facts()
+    store.add('r1', { key: 'hospital.inova-alex.phone', label: 'Inova Alexandria main line', value: '(703) 504-3000', unit: 'text', source: src })
+    store.add('r1', { key: 'system.callback', label: 'Callback', value: '+15715550100', unit: 'text', source: src })
+    expect(verify('Call 703-504-3000 or 571-555-0100.', all(), 'voice').verdict).toBe('pass_with_note')
+    expect(verify('Their line is 7035043000.', all(), 'voice').verdict).toBe('pass_with_note')
+    const v = verify('Inova Alexandria has 430 beds.', all(), 'voice')
+    expect(v.verdict).toBe('block')
+    expect(v.findings[0]).toMatchObject({ fact_id: expect.stringMatching(/^F/), expected: '312' })
+  })
+
   it('never blocks nine one one', () => {
     const { all } = facts()
     expect(verify('Hang up and dial 911 now.', all(), 'voice').verdict).toBe('pass')

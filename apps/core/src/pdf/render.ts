@@ -40,9 +40,24 @@ export function markdownToHtml(md: string): string {
   return out.join('\n')
 }
 
-export function sitrepHtml(opts: { text: string; title: string; generatedAt: string; facts: Fact[]; template: boolean }) {
+const BANNER = {
+  drill: 'DRILL — NOT A REAL EVENT',
+  rerun: 'RERUN OF A PAST EVENT — EXERCISE',
+  live: null,
+} as const
+
+export function sitrepHtml(opts: {
+  text: string
+  title: string
+  generatedAt: string
+  facts: Fact[]
+  template: boolean
+  setting?: keyof typeof BANNER
+}) {
   const sources = [...new Map(opts.facts.map((f) => [f.source.name, f.source])).values()]
-  const body = markdownToHtml(opts.text.replace(/^DRILL — Sentinel ER situation report\s*/i, ''))
+  const banner = BANNER[opts.setting ?? 'drill']
+  // the first line is the report's own heading; the page header says it better
+  const body = markdownToHtml(opts.text.replace(/^[^\n]*Sentinel ER situation report\s*/i, ''))
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(opts.title)}</title><style>
   @page { size: Letter; margin: 14mm 14mm 16mm; }
   body { font: 10.5pt/1.45 "Helvetica Neue", Arial, sans-serif; color: #111; }
@@ -57,7 +72,7 @@ export function sitrepHtml(opts: { text: string; title: string; generatedAt: str
   footer { margin-top: 12px; border-top: 1px solid #bbb; padding-top: 6px; font-size: 8pt; color:#444; }
   footer li { margin: 0; }
   </style></head><body>
-  <div class="drill"><div>DRILL — NOT A REAL EVENT</div></div>
+  ${banner ? `<div class="drill"><div>${banner}</div></div>` : ''}
   <header><h1>${esc(opts.title)}</h1><p>Sentinel ER situation report<br>Generated ${esc(opts.generatedAt)}${opts.template ? ' · template' : ''}</p></header>
   ${body}
   <footer><strong>Sources.</strong> Every figure above was checked against its source before this report was produced.
