@@ -5,6 +5,7 @@ import { useConsole } from '../../store/stream'
 import { EmptyState, FactHover, Panel } from '../ui'
 import { CasualtyCard, useCasualties } from './Casualties'
 import { LifelineList } from './Lifeline'
+import { NextDays } from './NextDays'
 import { SurgeTable, useSurge } from './Surge'
 
 function useRunFacts(prefixes: string[]): Fact[] {
@@ -83,16 +84,9 @@ export function NowPanel() {
 }
 
 export function NextPanel() {
-  const facts = useRunFacts(['ed_demand.', 'smoke.', 'heat.'])
   return (
-    <Panel title="Next 72 h" aside={<HorizonTitle index="02" name="Forecast" span="three days" />} className="flex-1" bodyClass="overflow-y-auto" delay={160}>
-      {facts.length ? (
-        <FactGrid facts={facts} />
-      ) : (
-        <EmptyState title="ED demand forecast">
-          Expected change in emergency visits from wildfire smoke, heat and storms for each of the next three days, with the source of every hour and staffing suggestions.
-        </EmptyState>
-      )}
+    <Panel title="Next 72 h" aside={<HorizonTitle index="02" name="Forecast" span="three days" />} className="min-w-0 flex-1" bodyClass="overflow-y-auto" delay={160}>
+      <NextDays />
     </Panel>
   )
 }
