@@ -1,0 +1,75 @@
+{
+  "variant": "smoke-nyc-log-all-literature",
+  "created_at": "2026-09-16T13:23:30+00:00",
+  "use_correction": false,
+  "literature": {
+    "or_per_10": 1.089,
+    "ci95": [
+      1.043,
+      1.136
+    ],
+    "lag": "0-1",
+    "cite": "Gan RW et al. J Expo Sci Environ Epidemiol 2020;30:618-628 (PMID 32051501), asthma ED visits, wildfire PM2.5, Oregon 2013",
+    "beta_per_ugm3": 0.008525984395082339,
+    "se_per_ugm3": 0.002178881231640923
+  },
+  "exposure": {
+    "form": "log",
+    "season_in_training": "all",
+    "background_days": 30,
+    "background": "trailing median of daily PM2.5 over the previous 30 days",
+    "terms": {
+      "s01": "mean of lags 0-1",
+      "s23": "mean of lags 2-3",
+      "s45": "mean of lags 4-5"
+    },
+    "training_max_s01": 34.17
+  },
+  "correction": {
+    "terms": [
+      "s01",
+      "s23",
+      "s45"
+    ],
+    "mean": [
+      -0.007162605738946849,
+      0.0017580041781077834,
+      0.0016675672833206274
+    ],
+    "cov": [
+      [
+        1.708336229064028e-06,
+        -3.196642463631375e-07,
+        1.6070918825670795e-07
+      ],
+      [
+        -3.196642463631375e-07,
+        1.5314211132659551e-06,
+        -3.095854998205552e-07
+      ],
+      [
+        1.6070918825670795e-07,
+        -3.095854998205552e-07,
+        1.4872676542222169e-06
+      ]
+    ],
+    "se": [
+      0.001307033369529649,
+      0.0012375060053454105,
+      0.0012195358355629477
+    ],
+    "kappa": 0.16,
+    "kappa_ci95": [
+      -0.141,
+      0.46
+    ],
+    "scale": 3.733
+  },
+  "trained": {
+    "rows": 3412,
+    "from": "2016-01-16",
+    "to": "2026-05-31",
+    "hold_out_year": 2023,
+    "trend_df": 8
+  }
+}

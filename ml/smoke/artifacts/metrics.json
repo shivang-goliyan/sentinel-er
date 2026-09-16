@@ -1,0 +1,287 @@
+{
+  "variant": "smoke-nyc-log-all-literature",
+  "created_at": "2026-09-16T13:23:30+00:00",
+  "data": {
+    "outcome": "NYC syndromic surveillance, asthma ED visits, citywide, all ages (EpiQuery export)",
+    "exposure": "EPA AirData daily_88101 (PM2.5 FRM/FEM), Bronx, Kings, New York, Queens, Richmond",
+    "confounder": "Open-Meteo ERA5 daily max temperature, Central Park",
+    "table_rows": 3896,
+    "table_from": "2016-01-01",
+    "table_to": "2026-08-31",
+    "pm_to": "2026-05-31",
+    "training_rows": 3412,
+    "test_rows_2023": 365,
+    "training_smoke_days": {
+      "s01_over_5": 397,
+      "s01_over_10": 85,
+      "s01_over_25": 2
+    },
+    "test_smoke_days": {
+      "s01_over_5": 70,
+      "s01_over_10": 18,
+      "s01_over_25": 6,
+      "s01_over_100": 2
+    },
+    "training_max_s01": 34.2,
+    "test_max_s01": 131.3
+  },
+  "selection": {
+    "cv_years": [
+      2017,
+      2018,
+      2019,
+      2022,
+      2024,
+      2025
+    ],
+    "smoke_day_threshold_s01": 5.0,
+    "rows": [
+      {
+        "form": "linear",
+        "season": "all",
+        "kind": "literature",
+        "deviance_all": 8994.1,
+        "days": 2179,
+        "deviance_smoke_days": 1129.5,
+        "smoke_days": 266
+      },
+      {
+        "form": "linear",
+        "season": "all",
+        "kind": "corrected",
+        "deviance_all": 8800.9,
+        "days": 2179,
+        "deviance_smoke_days": 958.5,
+        "smoke_days": 266
+      },
+      {
+        "form": "linear",
+        "season": "warm",
+        "kind": "literature",
+        "deviance_all": 8864.4,
+        "days": 2179,
+        "deviance_smoke_days": 1016.8,
+        "smoke_days": 266
+      },
+      {
+        "form": "linear",
+        "season": "warm",
+        "kind": "corrected",
+        "deviance_all": 8787.0,
+        "days": 2179,
+        "deviance_smoke_days": 966.5,
+        "smoke_days": 266
+      },
+      {
+        "form": "log",
+        "season": "all",
+        "kind": "literature",
+        "deviance_all": 8887.3,
+        "days": 2179,
+        "deviance_smoke_days": 1032.6,
+        "smoke_days": 266
+      },
+      {
+        "form": "log",
+        "season": "all",
+        "kind": "corrected",
+        "deviance_all": 8796.4,
+        "days": 2179,
+        "deviance_smoke_days": 955.5,
+        "smoke_days": 266
+      },
+      {
+        "form": "log",
+        "season": "warm",
+        "kind": "literature",
+        "deviance_all": 8818.0,
+        "days": 2179,
+        "deviance_smoke_days": 980.1,
+        "smoke_days": 266
+      },
+      {
+        "form": "log",
+        "season": "warm",
+        "kind": "corrected",
+        "deviance_all": 8780.7,
+        "days": 2179,
+        "deviance_smoke_days": 960.9,
+        "smoke_days": 266
+      }
+    ],
+    "picked": {
+      "form": "log",
+      "season": "all"
+    },
+    "correction_wins_cv": true,
+    "served_rule": "serve the correction only if it wins CV and also beats the literature term on the 6-8 June excess and June deviance; the second half looks at 2023"
+  },
+  "all_candidates_2023": [
+    {
+      "form": "linear",
+      "season": "all",
+      "kind": "literature",
+      "predicted_excess": 798.2,
+      "observed_excess": 221.1,
+      "june_deviance": 342.5
+    },
+    {
+      "form": "linear",
+      "season": "all",
+      "kind": "corrected",
+      "predicted_excess": 73.0,
+      "observed_excess": 218.1,
+      "june_deviance": 110.8
+    },
+    {
+      "form": "linear",
+      "season": "warm",
+      "kind": "literature",
+      "predicted_excess": 797.2,
+      "observed_excess": 221.7,
+      "june_deviance": 340.8
+    },
+    {
+      "form": "linear",
+      "season": "warm",
+      "kind": "corrected",
+      "predicted_excess": 134.1,
+      "observed_excess": 220.8,
+      "june_deviance": 105.0
+    },
+    {
+      "form": "log",
+      "season": "all",
+      "kind": "literature",
+      "predicted_excess": 121.2,
+      "observed_excess": 220.5,
+      "june_deviance": 94.6
+    },
+    {
+      "form": "log",
+      "season": "all",
+      "kind": "corrected",
+      "predicted_excess": 29.0,
+      "observed_excess": 218.9,
+      "june_deviance": 149.4
+    },
+    {
+      "form": "log",
+      "season": "warm",
+      "kind": "literature",
+      "predicted_excess": 121.0,
+      "observed_excess": 221.1,
+      "june_deviance": 94.7
+    },
+    {
+      "form": "log",
+      "season": "warm",
+      "kind": "corrected",
+      "predicted_excess": 40.6,
+      "observed_excess": 221.4,
+      "june_deviance": 139.5
+    }
+  ],
+  "correction": {
+    "kappa": 0.16,
+    "kappa_ci95": [
+      -0.141,
+      0.46
+    ],
+    "lag_2_3_per_ugm3": 0.00176,
+    "lag_2_3_se": 0.00124,
+    "lag_4_5_per_ugm3": 0.00167,
+    "lag_4_5_se": 0.00122,
+    "overdispersion": 3.733
+  },
+  "validation_2023": {
+    "literature": {
+      "year_2023": {
+        "deviance": 912.4,
+        "mae": 16.37,
+        "baseline_only_deviance": 1020.4
+      },
+      "june_2023": {
+        "deviance": 94.6,
+        "mae": 17.69,
+        "baseline_only_mae": 20.08
+      },
+      "episode_6_8_june": {
+        "predicted_excess": {
+          "p10": 79.8,
+          "p50": 122.8,
+          "p90": 166.6
+        },
+        "observed_excess_vs_model_baseline": 220.5,
+        "observed_excess_vs_prior_weeks": 177.8,
+        "error": -97.7,
+        "error_pct": -44.3,
+        "observed_inside_p10_p90": false
+      },
+      "peak_7_june": {
+        "observed": 335,
+        "baseline": 186.6,
+        "predicted": 233.9,
+        "predicted_p10_p90": [
+          217.6,
+          251.9
+        ],
+        "error": -101.1,
+        "error_pct": -30.2,
+        "predicted_pct_change": 25.3,
+        "observed_pct_change": 79.5
+      }
+    },
+    "corrected": {
+      "year_2023": {
+        "deviance": 964.4,
+        "mae": 16.51,
+        "baseline_only_deviance": 1013.6
+      },
+      "june_2023": {
+        "deviance": 149.4,
+        "mae": 18.85,
+        "baseline_only_mae": 20.1
+      },
+      "episode_6_8_june": {
+        "predicted_excess": {
+          "p10": -12.5,
+          "p50": 30.8,
+          "p90": 75.9
+        },
+        "observed_excess_vs_model_baseline": 218.9,
+        "observed_excess_vs_prior_weeks": 177.8,
+        "error": -188.1,
+        "error_pct": -85.9,
+        "observed_inside_p10_p90": false
+      },
+      "peak_7_june": {
+        "observed": 335,
+        "baseline": 187.3,
+        "predicted": 196.3,
+        "predicted_p10_p90": [
+          180.4,
+          214.3
+        ],
+        "error": -138.7,
+        "error_pct": -41.4,
+        "predicted_pct_change": 4.8,
+        "observed_pct_change": 78.9
+      }
+    }
+  },
+  "correction_beats_literature_2023": {
+    "episode_excess_abs_error": false,
+    "june_deviance": false,
+    "year_deviance": false
+  },
+  "served": "literature",
+  "verdict": "Served model: literature. The correction won training-year CV but failed the 2023 check, so it is not served. On 6-8 June 2023 the served model predicts 123 excess asthma ED visits (p10-p90 80-167) against 220 observed above the model baseline, an error of -44%. The learned correction does not beat the literature-only model on the episode excess, does not beat it on June deviance, and does not beat it on 2023 deviance. June 2023 smoke (s01 up to 131 ug/m3) runs far past anything in training (max 34 ug/m3), so any number at that level is an extrapolation.",
+  "context_not_target": {
+    "source": "CDC MMWR 2023;72(34):926, doi:10.15585/mmwr.mm7234a5",
+    "national": "asthma ED visits 17% above expected across 19 smoke days, April-August 2023",
+    "region_2_excess_6_8_june": 364,
+    "note": "HHS Region 2 is New York and New Jersey, with a different baseline method; not comparable one to one"
+  },
+  "uncertainty": "p10-p90 bands carry the literature CI and the correction's covariance; baseline error and day-to-day Poisson noise are not in the band"
+}
