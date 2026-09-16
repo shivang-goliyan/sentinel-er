@@ -13,6 +13,7 @@ import { registerArtifacts } from './routes/artifacts.ts'
 import { registerLog } from './routes/log.ts'
 import { registerOperator } from './routes/operator.ts'
 import { registerStream } from './routes/stream.ts'
+import { registerDrill } from './routes/drill.ts'
 import { registerVoice } from './routes/voice.ts'
 import type { ActiveRun } from './runs.ts'
 import type { Switches } from './switches.ts'
@@ -62,6 +63,7 @@ export async function buildServer(deps: Omit<Deps, 'requireOperator' | 'voice'>,
   await registerVoice(app, full)
   registerArtifacts(app, full)
   registerAnchors(app, full)
+  registerDrill(app, full)
 
   const startedAt = Date.now()
   app.get('/api/health', async () => ({
