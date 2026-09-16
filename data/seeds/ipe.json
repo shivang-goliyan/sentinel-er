@@ -1,0 +1,35 @@
+{
+  "aww14": {
+    "source": "Atkinson, Worden & Wald (2014), BSSA 104(6):3084, doi:10.1785/0120140178. Coefficients as implemented in GeoscienceAustralia ga-earthquake-hazard atkinson_2014_ipe.py and treviallen mmi_tools.py (the paper itself was not read).",
+    "form": "MMI = c1 + c2*M + c3*log10(R) + c4*R + c5*B + c6*M*log10(R); R = sqrt(Rhyp^2 + h^2); B = max(0, log10(R/50))",
+    "c1": 0.309,
+    "c2": 1.864,
+    "c3": -1.672,
+    "c4": -0.00219,
+    "c5": 1.77,
+    "c6": -0.383,
+    "h_km": 14,
+    "sigma": null,
+    "sigma_note": "UNVERIFIED: the two implementations disagree (0.5 and 0.15)",
+    "ena": {
+      "form": "+ offset + slope*Repi + max(0, far_coef*log10(min(Repi, far_cap_km)/far_ref_km))",
+      "offset": 0.7,
+      "slope_per_km": 0.001,
+      "far_coef": 0.8,
+      "far_ref_km": 50,
+      "far_cap_km": 150
+    }
+  },
+  "worden2012": {
+    "source": "Worden et al. (2012), BSSA 102(1); coefficients from USGS ShakeMap shakelib/gmice/wgrw12.py",
+    "units": "PGA in cm/s^2",
+    "c1": 1.78,
+    "c2": 1.55,
+    "c3": -1.6,
+    "c4": 3.7,
+    "t1_log10_pga": 1.57,
+    "t2_mmi": 4.22,
+    "sigma_mmi": 0.66,
+    "sigma_log10_pga": 0.35
+  }
+}

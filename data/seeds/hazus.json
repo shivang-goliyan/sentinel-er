@@ -1,0 +1,51 @@
+{
+  "source": "FEMA Hazus 6.1 Earthquake Model Technical Manual (July 2024), read from the Wayback copy of https://www.fema.gov/sites/default/files/documents/fema_hazus-earthquake-model-technical-manual-6-1.pdf",
+  "damage_states": ["slight", "moderate", "extensive", "complete"],
+  "substations": {
+    "table": "8-29",
+    "units": "median PGA in g / lognormal beta",
+    "voltage_classes_kv": { "low": [34.5, 150], "medium": [150, 350], "high": [350, null] },
+    "default_anchoring": "unanchored",
+    "curves": {
+      "low_anchored": [[0.15, 0.7], [0.29, 0.55], [0.45, 0.45], [0.9, 0.45]],
+      "low_unanchored": [[0.13, 0.65], [0.26, 0.5], [0.34, 0.4], [0.74, 0.4]],
+      "medium_anchored": [[0.15, 0.6], [0.25, 0.5], [0.35, 0.4], [0.7, 0.4]],
+      "medium_unanchored": [[0.1, 0.6], [0.2, 0.5], [0.3, 0.4], [0.5, 0.4]],
+      "high_anchored": [[0.11, 0.5], [0.15, 0.45], [0.2, 0.35], [0.47, 0.4]],
+      "high_unanchored": [[0.09, 0.5], [0.13, 0.4], [0.17, 0.35], [0.38, 0.35]]
+    },
+    "restoration_days": {
+      "table": "8-27",
+      "form": "normal mean, sigma per damage state",
+      "substation": [[1.0, 0.5], [3.0, 1.5], [7.0, 3.5], [30, 15]],
+      "distribution_circuit": [[0.3, 0.2], [1.0, 0.5], [3.0, 1.5], [7.0, 3.0]]
+    },
+    "percent_functional": {
+      "table": "8-28",
+      "days": [1, 3, 7, 30, 90],
+      "slight": [50, 100, 100, 100, 100],
+      "moderate": [9, 50, 100, 100, 100],
+      "extensive": [4, 13, 50, 100, 100],
+      "complete": [3, 4, 7, 50, 100]
+    }
+  },
+  "hospitals": {
+    "note": "Hazus has no hospital-specific fragility; hospitals use their building type. C2M Moderate-Code is our assumed default and is labelled as an assumption.",
+    "classes": { "EFHS": "< 50 beds", "EFHM": "50-150 beds", "EFHL": "> 150 beds" },
+    "default_building_type": "C2M",
+    "fragility": {
+      "table": "5-38",
+      "building_type": "C2M",
+      "code_level": "moderate",
+      "units": "median PGA in g",
+      "medians": [0.15, 0.26, 0.55, 1.02],
+      "beta": 0.64
+    },
+    "restoration_days": {
+      "table": "6-20",
+      "form": "normal mean, sigma per damage state",
+      "values": [[5, 1], [20, 2], [90, 10], [180, 20]]
+    },
+    "functionality_bands": { "non_functional": [0, 0.25], "limited": [0.25, 0.75], "functional": [0.75, 1] }
+  }
+}
