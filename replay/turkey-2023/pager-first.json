@@ -1,0 +1,32 @@
+{
+  "scenario": "turkey-2023",
+  "event_id": "us6000jllz",
+  "title": "M 7.8 - Pazarcik earthquake, Kahramanmaras earthquake sequence",
+  "origin_time": "2023-02-06T01:17:34.342Z",
+  "final_magnitude": 7.8,
+  "published_at": "2023-02-06T01:38:42.791Z",
+  "minutes_after_origin": 21,
+  "pager_xml": "https://earthquake.usgs.gov/product/losspager/us6000jllz/us/1675647522791/pager.xml",
+  "alert": "pending",
+  "magnitude": 7.8,
+  "depth_km": 24.1,
+  "lat": 37.2012,
+  "lon": 36.9997,
+  "maxmmi": 8,
+  "local_time": "2023-02-06 04:17:36",
+  "pop_mmi": {
+    "1": 0,
+    "2": 0,
+    "3": 7408569,
+    "4": 216276466,
+    "5": 19870525,
+    "6": 10847017,
+    "7": 4133083,
+    "8": 304968,
+    "9": 0,
+    "10": 0
+  },
+  "iso3": "TUR",
+  "tz": "Europe/Istanbul",
+  "versions": 21
+}

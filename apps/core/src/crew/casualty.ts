@@ -42,6 +42,24 @@ export function localHour(isoTime: string, tz: string | undefined, lon: number):
 
 const LABEL: Record<keyof Band, string> = { p10: 'low estimate', p50: 'middle estimate', p90: 'high estimate' }
 
+export async function callCasualtyModel(input: CasualtyInput, scienceUrl: string): Promise<CasualtyOut> {
+  const res = await fetch(`${scienceUrl}/casualty`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    signal: AbortSignal.timeout(20_000),
+    body: JSON.stringify({
+      pop_mmi: Object.fromEntries(Object.entries(input.popMmi).map(([k, v]) => [String(k), v])),
+      magnitude: input.magnitude,
+      depth_km: input.depthKm,
+      local_hour: input.localHour,
+      iso3: input.iso3,
+      iso2: input.iso2,
+    }),
+  })
+  if (!res.ok) throw new Error(`science service said ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  return (await res.json()) as CasualtyOut
+}
+
 export async function runCasualtyStage(
   d: { chain: LogChain; facts: FactStore },
   runId: string,
@@ -53,21 +71,7 @@ export async function runCasualtyStage(
   chain.append('analyst', 'status', { text: 'Running the casualty model on the exposure' }, runId)
   let out: CasualtyOut
   try {
-    const res = await fetch(`${scienceUrl}/casualty`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      signal: AbortSignal.timeout(20_000),
-      body: JSON.stringify({
-        pop_mmi: Object.fromEntries(Object.entries(input.popMmi).map(([k, v]) => [String(k), v])),
-        magnitude: input.magnitude,
-        depth_km: input.depthKm,
-        local_hour: input.localHour,
-        iso3: input.iso3,
-        iso2: input.iso2,
-      }),
-    })
-    if (!res.ok) throw new Error(`science service said ${res.status}: ${(await res.text()).slice(0, 200)}`)
-    out = (await res.json()) as CasualtyOut
+    out = await callCasualtyModel(input, scienceUrl)
   } catch (err) {
     const message = (err as Error).message
     chain.append('analyst', 'error', { where: 'casualty model', message }, runId)

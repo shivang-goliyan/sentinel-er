@@ -1,0 +1,32 @@
+{
+  "scenario": "mineral-va-2011",
+  "event_id": "se609212",
+  "title": "M 5.8 - 11 km SSW of Mineral, Virginia",
+  "origin_time": "2011-08-23T17:51:04.250Z",
+  "final_magnitude": 5.8,
+  "published_at": "2017-03-07T14:33:01.026Z",
+  "minutes_after_origin": 2912922,
+  "pager_xml": "https://earthquake.usgs.gov/product/losspager/se609212/us/1488897181026/pager.xml",
+  "alert": "yellow",
+  "magnitude": 5.8,
+  "depth_km": 6,
+  "lat": 37.90967,
+  "lon": -77.93633,
+  "maxmmi": 7,
+  "local_time": "12:51:04",
+  "pop_mmi": {
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 5058371,
+    "5": 7177815,
+    "6": 679391,
+    "7": 39493,
+    "8": 0,
+    "9": 0,
+    "10": 0
+  },
+  "iso3": "USA",
+  "tz": "America/New_York",
+  "versions": 3
+}

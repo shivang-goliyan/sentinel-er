@@ -1,0 +1,9 @@
+{
+  "scenario": "nepal-2015",
+  "deaths": { "value": 8957, "source": "NOAA NCEI Significant Earthquake Database, id 10134", "url": "https://www.ngdc.noaa.gov/hazel/hazard-service/api/v1/earthquakes?minYear=2015&maxYear=2015&country=NEPAL" },
+  "injured": { "value": 24000, "source": "NOAA NCEI Significant Earthquake Database, id 10134", "url": "https://www.ngdc.noaa.gov/hazel/hazard-service/api/v1/earthquakes?minYear=2015&maxYear=2015&country=NEPAL" },
+  "context": [
+    { "label": "Nepal government PDNA", "deaths": 8790, "injured": 22300, "url": "https://www.gfdrr.org/sites/default/files/publication/pda-2015-nepal-vola.pdf" }
+  ],
+  "note": "Includes the M7.3 aftershock of 12 May 2015. The casualty model was trained with this sequence held out."
+}

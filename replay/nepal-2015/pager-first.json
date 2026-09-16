@@ -1,0 +1,32 @@
+{
+  "scenario": "nepal-2015",
+  "event_id": "us20002926",
+  "title": "M 7.8 - 67 km NNE of Bharatpur, Nepal",
+  "origin_time": "2015-04-25T06:11:25.950Z",
+  "final_magnitude": 7.8,
+  "published_at": "2015-04-25T06:39:49.770Z",
+  "minutes_after_origin": 28,
+  "pager_xml": "https://earthquake.usgs.gov/product/losspager/us20002926/us/1429943989770/pager.xml",
+  "alert": "pending",
+  "magnitude": 7.5,
+  "depth_km": 11.9,
+  "lat": 28.1654,
+  "lon": 84.7251,
+  "maxmmi": 7,
+  "local_time": "11:56:25",
+  "pop_mmi": {
+    "1": 0,
+    "2": 0,
+    "3": 19142,
+    "4": 77460553,
+    "5": 64947317,
+    "6": 7678641,
+    "7": 396082,
+    "8": 0,
+    "9": 0,
+    "10": 0
+  },
+  "iso3": "NPL",
+  "tz": "Asia/Kathmandu",
+  "versions": 10
+}

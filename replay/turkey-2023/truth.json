@@ -1,0 +1,10 @@
+{
+  "scenario": "turkey-2023",
+  "deaths": { "value": 56697, "source": "NOAA NCEI Significant Earthquake Database, id 10662", "url": "https://www.ngdc.noaa.gov/hazel/hazard-service/api/v1/earthquakes?minYear=2023&maxYear=2023&country=TURKEY" },
+  "injured": { "value": 119200, "source": "NOAA NCEI Significant Earthquake Database, id 10662", "url": "https://www.ngdc.noaa.gov/hazel/hazard-service/api/v1/earthquakes?minYear=2023&maxYear=2023&country=TURKEY" },
+  "context": [
+    { "label": "Türkiye official toll, February 2024", "deaths": 53537, "injured": 107213, "url": "https://turkishminute.com/2024/02/02/turkey-revised-its-2023-earthquake-death-toll-53537/" },
+    { "label": "Türkiye and Syria combined deaths", "deaths": 59488 }
+  ],
+  "note": "Tolls cover the whole sequence, including the M7.5 Elbistan quake nine hours later. The casualty model was trained with this sequence held out."
+}

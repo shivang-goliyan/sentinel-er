@@ -62,9 +62,9 @@ The licence columns for libraries are filled from package metadata (`npx license
 
 | Package | Used for |
 |---|---|
-| fastify, @fastify/websocket | HTTP, SSE, WebSockets |
+| fastify, @fastify/websocket, @fastify/formbody | HTTP, SSE, WebSockets, Twilio form webhooks |
 | zod | Schemas shared by server and console |
-| better-sqlite3, drizzle-orm | Database |
+| better-sqlite3, drizzle-orm, drizzle-kit | Database and migrations |
 | openai | OpenAI-compatible client for the LLM chain |
 | twilio | Twilio REST client |
 | ws | Deepgram streaming socket |
@@ -72,14 +72,15 @@ The licence columns for libraries are filled from package metadata (`npx license
 | @turf/* | Geometry |
 | kdbush, geokdbush | Spatial indexes |
 | d3-contour | Intensity contours |
-| playwright | Sitrep PDF rendering |
+| playwright-core | Sitrep PDF rendering (headless Chromium) |
 | opentimestamps | Log anchoring |
-| react, react-dom, vite | Console |
+| react, react-dom, vite, @vitejs/plugin-react | Console |
 | tailwindcss | Styling |
 | maplibre-gl, @vis.gl/react-maplibre | Map |
 | recharts | Charts |
 | @fontsource-variable/public-sans, @fontsource/barlow-condensed, @fontsource-variable/red-hat-mono | Self-hosted console fonts (Public Sans, Barlow Condensed, Red Hat Mono; SIL Open Font License) |
 | zustand | Console state |
+| typescript, @types/node | Type checking |
 | vitest | Tests |
 
 ## Python libraries
@@ -89,6 +90,7 @@ The licence columns for libraries are filled from package metadata (`npx license
 | fastapi, uvicorn | Science service |
 | lightgbm | Casualty model |
 | numpy, pandas, scikit-learn, statsmodels | Data and modelling |
+| requests | Downloading source datasets |
 | xarray, cfgrib, eccodes | GRIB2 decoding |
 | herbie-data | HRRR byte-range subsetting |
 | matplotlib | Validation charts |

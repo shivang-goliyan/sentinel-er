@@ -64,7 +64,17 @@ export class Orchestrator {
   }
 
   // Creates the event and run records, writes the opening entries, and kicks the crew off.
-  begin(event: HazardEvent, mode: RunMode, opts: { asOf?: string | null; stopAfterContext?: boolean } = {}): string {
+  begin(
+    event: HazardEvent,
+    mode: RunMode,
+    opts: {
+      asOf?: string | null
+      stopAfterContext?: boolean
+      // records only: the caller runs its own stages
+      noStages?: boolean
+      onDone?: (runId: string) => void | Promise<void>
+    } = {},
+  ): string {
     const { chain, sqlite, activeRun } = this.deps
     const previous = activeRun.current
     if (previous) chain.append('orchestrator', 'run.ended', { status: 'stopped', note: 'replaced by a new run' }, previous)
@@ -109,9 +119,11 @@ export class Orchestrator {
     chain.append('orchestrator', 'ledger', { milestone: 'detected' }, runId)
 
     // after the response goes out; the stage does a second of synchronous geometry first
+    if (opts.noStages) return runId
     setImmediate(() => {
       this.contextStage(runId, event)
         .then((ctx) => (ctx && opts.stopAfterContext !== true ? this.crewStage(runId, event, ctx) : undefined))
+        .then(() => opts.onDone?.(runId))
         .catch((err: unknown) => {
           const message = err instanceof Error ? err.message : String(err)
           chain.append('orchestrator', 'error', { where: 'run', message }, runId)

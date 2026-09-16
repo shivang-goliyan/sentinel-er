@@ -1,0 +1,9 @@
+{
+  "scenario": "mineral-va-2011",
+  "deaths": { "value": 0, "source": "International Code Council, ten-year anniversary review", "url": "https://www.iccsafe.org/building-safety-journal/bsj-dives/ten-year-anniversary-of-the-2011-virginia-earthquake-the-most-widely-felt-earthquake-to-rock-the-eastern-u-s/" },
+  "injured": { "value": null, "source": "Only minor injuries were reported; no count is published", "url": "https://www.iccsafe.org/building-safety-journal/bsj-dives/ten-year-anniversary-of-the-2011-virginia-earthquake-the-most-widely-felt-earthquake-to-rock-the-eastern-u-s/" },
+  "context": [
+    { "label": "Washington Monument closed 32 months, $15M repair", "url": "https://www.nps.gov/nama/learn/news/washington-monument-to-reopen-may-12.htm" }
+  ],
+  "note": "USGS reprocessed PAGER for this quake years later, so this rerun uses Sentinel's own Census-based exposure rather than a first USGS estimate."
+}

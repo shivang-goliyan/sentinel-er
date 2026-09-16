@@ -13,6 +13,7 @@ import { registerArtifacts } from './routes/artifacts.ts'
 import { registerLog } from './routes/log.ts'
 import { registerModels } from './routes/models.ts'
 import { registerOperator } from './routes/operator.ts'
+import { registerRerun } from './routes/rerun.ts'
 import { registerStream } from './routes/stream.ts'
 import { registerDrill } from './routes/drill.ts'
 import { registerVoice } from './routes/voice.ts'
@@ -65,6 +66,7 @@ export async function buildServer(deps: Omit<Deps, 'requireOperator' | 'voice'>,
   registerArtifacts(app, full)
   registerAnchors(app, full)
   registerModels(app, full)
+  registerRerun(app, full)
   registerDrill(app, full)
 
   const startedAt = Date.now()
