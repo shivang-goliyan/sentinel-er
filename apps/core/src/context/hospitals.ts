@@ -32,7 +32,7 @@ type Seed = { retrieved_at: string; rows: RaptRow[] }
 const str = (v: unknown) => (v == null || v === '' || v === 'NOT AVAILABLE' ? null : String(v).trim())
 
 const titleCase = (s: string) =>
-  s.toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase()).replace(/\b(Of|And|The|At)\b/g, (m) => m.toLowerCase())
+  s.toLowerCase().replace(/(^|[\s\-/(])([a-z])/g, (_m, pre: string, c: string) => pre + c.toUpperCase()).replace(/(?<!^)\b(Of|And|The|At)\b/g, (m) => m.toLowerCase())
 
 export function traumaLabel(raw: string | null): string {
   if (!raw) return 'not designated in the FEMA data'
