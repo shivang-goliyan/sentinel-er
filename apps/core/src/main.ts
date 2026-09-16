@@ -4,8 +4,10 @@ import { openDb } from './db/index.ts'
 import { FactStore } from './facts/store.ts'
 import { Anchors, openTimestamps } from './log/anchor.ts'
 import { LogChain } from './log/chain.ts'
+import { Orchestrator } from './crew/orchestrator.ts'
+import { FeedWatcher } from './feeds/watcher.ts'
 import { ActiveRun } from './runs.ts'
-import { buildServer } from './server.ts'
+import { buildServer, serverDeps } from './server.ts'
 import { Switches } from './switches.ts'
 import { setTapeDefaults } from './tape.ts'
 
@@ -32,13 +34,24 @@ setTapeDefaults({
 })
 
 const app = await buildServer({ config, sqlite, db, bus, chain, facts, switches, activeRun, anchors })
+const crew = new Orchestrator(serverDeps.get(app)!)
+const watcher = new FeedWatcher({
+  chain,
+  switches,
+  minPop: config.TIER2_MIN_POP,
+  begin: (event) => crew.begin(event, 'live'),
+})
+app.get('/api/feeds', async () => ({ enabled: config.FEEDS, health: watcher.health }))
+
 await app.listen({ host: config.HOST, port: config.PORT })
+if (config.FEEDS) watcher.start()
 
 let closing = false
 async function stop() {
   if (closing) return
   closing = true
   clearInterval(anchorTimer)
+  watcher.stop()
   clearInterval(upgradeTimer)
   await app.close()
   sqlite.close()

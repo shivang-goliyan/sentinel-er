@@ -27,6 +27,8 @@ const Env = z.object({
   TIER2_MIN_POP: z.coerce.number().default(10000),
   DAMAGE_MMI: z.coerce.number().default(7),
   VOICE_RECORD: flag.default(true),
+  // poll the public hazard feeds; off in development so restarts don't hammer them
+  FEEDS: flag.default(false),
   // off until Phase 0 shows <Start><Stream> works next to ConversationRelay
   VOICE_LISTEN: flag.default(false),
 })
