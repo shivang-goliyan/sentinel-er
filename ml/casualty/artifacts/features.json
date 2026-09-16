@@ -13,7 +13,10 @@
     "hour_cos",
     "is_night",
     "income_class",
-    "log_gdp_per_capita"
+    "log_gdp_per_capita",
+    "log_global_expected",
+    "country_factor",
+    "region_factor"
   ],
   "variant": "without_pager_alert",
   "other_variant_features": [
@@ -31,52 +34,66 @@
     "is_night",
     "income_class",
     "log_gdp_per_capita",
+    "log_global_expected",
+    "country_factor",
+    "region_factor",
     "pager_alert"
   ],
   "model_files": {
     "model_deaths_p10.txt": {
       "target": "deaths",
       "quantile": 0.1,
-      "rows": 6003
+      "rows": 8199
     },
     "model_deaths_p50.txt": {
       "target": "deaths",
       "quantile": 0.5,
-      "rows": 6003
+      "rows": 8199
     },
     "model_deaths_p90.txt": {
       "target": "deaths",
       "quantile": 0.9,
-      "rows": 6003
+      "rows": 8199
     },
     "model_injured_p10.txt": {
       "target": "injured",
       "quantile": 0.1,
-      "rows": 965
+      "rows": 1092
     },
     "model_injured_p50.txt": {
       "target": "injured",
       "quantile": 0.5,
-      "rows": 965
+      "rows": 1092
     },
     "model_injured_p90.txt": {
       "target": "injured",
       "quantile": 0.9,
-      "rows": 965
+      "rows": 1092
     }
   },
-  "target": "log1p of the count; predictions are expm1 of the sorted quantiles, clipped at 0",
+  "prior": {
+    "theta": 14.571514,
+    "beta": 0.205403,
+    "shift_log1p": {
+      "deaths": 0.0,
+      "injured": 1.2416257583622907
+    },
+    "factor_prior": 10.0
+  },
+  "predict": "log1p(target_q) = booster_q(features) + log1p(global_expected * 10^country_factor) + shift_log1p[target]; quantiles sorted, expm1, clipped at 0 (see casualty_model.py)",
   "preprocessing": {
     "log_pop_mmiK": "log1p(people exposed to integer MMI K, i.e. K-0.5 <= MMI < K+0.5)",
     "hour_sin/hour_cos": "local hour of day on a 24 h circle",
     "is_night": "1 if local time is 22:00-05:59",
     "income_class": "World Bank class: 0 low, 1 lower-middle, 2 upper-middle, 3 high",
     "log_gdp_per_capita": "log10 of World Bank GDP per capita (current US$), year before the event",
+    "log_global_expected": "log1p(sum over MMI 4-10 of people x global PAGER fatality rate)",
+    "country_factor/region_factor": "see country_factors.json",
     "pager_alert": "PAGER fatality alert: 0 green, 1 yellow, 2 orange, 3 red",
     "missing": "left as NaN; LightGBM routes missing values"
   },
   "rows_trained": {
-    "deaths": 6003,
-    "injured": 965
+    "deaths": 8199,
+    "injured": 1092
   }
 }

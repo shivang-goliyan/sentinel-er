@@ -1,0 +1,78 @@
+{
+  "start_log1p": 9.8695,
+  "steps": [
+    [
+      "typical correction",
+      -0.4098
+    ],
+    [
+      "size of the physical estimate",
+      -1.0791
+    ],
+    [
+      "country's past record",
+      -0.4401
+    ],
+    [
+      "magnitude",
+      0.1783
+    ],
+    [
+      "people at MMI 8",
+      0.1619
+    ],
+    [
+      "people at MMI 6",
+      0.1119
+    ],
+    [
+      "everything else",
+      -0.08080000000000065
+    ]
+  ],
+  "prediction_log1p": 8.3118,
+  "prior_log1p": 9.8695,
+  "booster_base_log1p": -0.4098,
+  "top": [
+    {
+      "feature": "log_global_expected",
+      "contribution_log1p": -1.0791,
+      "value": 9.3681
+    },
+    {
+      "feature": "country_factor",
+      "contribution_log1p": -0.4401,
+      "value": 0.2178
+    },
+    {
+      "feature": "magnitude",
+      "contribution_log1p": 0.1783,
+      "value": 7.8
+    },
+    {
+      "feature": "log_pop_mmi8",
+      "contribution_log1p": 0.1619,
+      "value": 14.4719
+    },
+    {
+      "feature": "log_pop_mmi6",
+      "contribution_log1p": 0.1119,
+      "value": 16.4169
+    },
+    {
+      "feature": "log_pop_mmi5",
+      "contribution_log1p": -0.0865,
+      "value": 16.9438
+    },
+    {
+      "feature": "log_pop_mmi7",
+      "contribution_log1p": -0.0725,
+      "value": 15.6645
+    },
+    {
+      "feature": "region_factor",
+      "contribution_log1p": 0.0605,
+      "value": 0.2033
+    }
+  ]
+}

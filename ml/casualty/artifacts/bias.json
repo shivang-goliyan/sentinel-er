@@ -1,0 +1,111 @@
+{
+  "what": "out-of-fold p50 deaths vs recorded deaths; residual > 0 means the model over-predicts",
+  "by_income_class": {
+    "High": {
+      "rows": 1900,
+      "rows_with_deaths": 113,
+      "coverage_weighted": 0.993,
+      "bin_accuracy_weighted": 0.974,
+      "median_residual_log10_deadly": -0.301,
+      "coverage_deadly": 0.708
+    },
+    "Low": {
+      "rows": 1439,
+      "rows_with_deaths": 182,
+      "coverage_weighted": 0.956,
+      "bin_accuracy_weighted": 0.83,
+      "median_residual_log10_deadly": -0.434,
+      "coverage_deadly": 0.687
+    },
+    "Lower-middle": {
+      "rows": 3063,
+      "rows_with_deaths": 335,
+      "coverage_weighted": 0.974,
+      "bin_accuracy_weighted": 0.912,
+      "median_residual_log10_deadly": -0.391,
+      "coverage_deadly": 0.678
+    },
+    "Unknown": {
+      "rows": 517,
+      "rows_with_deaths": 1,
+      "coverage_weighted": 0.999,
+      "bin_accuracy_weighted": 0.999,
+      "median_residual_log10_deadly": -0.683,
+      "coverage_deadly": 0.0
+    },
+    "Upper-middle": {
+      "rows": 1280,
+      "rows_with_deaths": 185,
+      "coverage_weighted": 0.975,
+      "bin_accuracy_weighted": 0.904,
+      "median_residual_log10_deadly": -0.301,
+      "coverage_deadly": 0.751
+    }
+  },
+  "by_region": {
+    "East Asia & Pacific": {
+      "rows": 4001,
+      "rows_with_deaths": 284,
+      "coverage_weighted": 0.985,
+      "bin_accuracy_weighted": 0.944,
+      "median_residual_log10_deadly": -0.301,
+      "coverage_deadly": 0.701
+    },
+    "Europe & Central Asia": {
+      "rows": 758,
+      "rows_with_deaths": 132,
+      "coverage_weighted": 0.958,
+      "bin_accuracy_weighted": 0.859,
+      "median_residual_log10_deadly": -0.34,
+      "coverage_deadly": 0.697
+    },
+    "Latin America & Caribbean": {
+      "rows": 1092,
+      "rows_with_deaths": 168,
+      "coverage_weighted": 0.964,
+      "bin_accuracy_weighted": 0.889,
+      "median_residual_log10_deadly": -0.301,
+      "coverage_deadly": 0.685
+    },
+    "Middle East, North Africa, Afghanistan & Pakistan": {
+      "rows": 410,
+      "rows_with_deaths": 148,
+      "coverage_weighted": 0.899,
+      "bin_accuracy_weighted": 0.585,
+      "median_residual_log10_deadly": -0.462,
+      "coverage_deadly": 0.73
+    },
+    "North America": {
+      "rows": 773,
+      "rows_with_deaths": 17,
+      "coverage_weighted": 0.998,
+      "bin_accuracy_weighted": 0.995,
+      "median_residual_log10_deadly": -0.301,
+      "coverage_deadly": 0.706
+    },
+    "South Asia": {
+      "rows": 193,
+      "rows_with_deaths": 26,
+      "coverage_weighted": 0.972,
+      "bin_accuracy_weighted": 0.827,
+      "median_residual_log10_deadly": -0.477,
+      "coverage_deadly": 0.731
+    },
+    "Sub-Saharan Africa": {
+      "rows": 366,
+      "rows_with_deaths": 16,
+      "coverage_weighted": 0.984,
+      "bin_accuracy_weighted": 0.942,
+      "median_residual_log10_deadly": -0.363,
+      "coverage_deadly": 0.625
+    },
+    "Unknown": {
+      "rows": 606,
+      "rows_with_deaths": 25,
+      "coverage_weighted": 0.995,
+      "bin_accuracy_weighted": 0.985,
+      "median_residual_log10_deadly": -0.301,
+      "coverage_deadly": 0.64
+    }
+  }
+}

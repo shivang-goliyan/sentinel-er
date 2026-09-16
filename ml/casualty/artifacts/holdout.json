@@ -1,0 +1,193 @@
+{
+  "variant": "without_pager_alert",
+  "events": {
+    "turkey-2023": {
+      "event_id": "us6000jllz",
+      "magnitude": 7.8,
+      "ncei_id": 10662.0,
+      "country_factor": 0.2178,
+      "prior_deaths": 19331,
+      "deaths": {
+        "p10": 88,
+        "p50": 4070,
+        "p90": 55385,
+        "ncei": 56697.0,
+        "official": 53537,
+        "inside_p10_p90": false,
+        "same_pager_bin": false,
+        "log10_error_p50": 1.144,
+        "other_variant": {
+          "p10": 77,
+          "p50": 5836,
+          "p90": 64403
+        },
+        "pager_baseline": 21573,
+        "pager_baseline_detail": {
+          "TR": 21546,
+          "SY": 27,
+          "total_all_countries": 21573,
+          "matches_usgs_losses_json": true
+        },
+        "baseline_log10_error": 0.42,
+        "model_beats_baseline": false
+      },
+      "injured": {
+        "p10": 5641,
+        "p50": 35067,
+        "p90": 155705,
+        "ncei": 119200.0,
+        "official": 107213,
+        "inside_p10_p90": true,
+        "same_pager_bin": true,
+        "log10_error_p50": 0.531,
+        "other_variant": {
+          "p10": 5954,
+          "p50": 39047,
+          "p90": 188553
+        }
+      },
+      "official_note": "T\u00fcrkiye official, Feb 2024 (whole sequence, T\u00fcrkiye only)",
+      "official_source": "https://turkishminute.com/2024/02/02/turkey-revised-its-2023-earthquake-death-toll-53537/",
+      "contributions_p50_deaths": {
+        "prior_log1p": 9.8695,
+        "booster_base_log1p": -0.4098,
+        "prediction_log1p": 8.3118,
+        "top": [
+          {
+            "feature": "log_global_expected",
+            "contribution_log1p": -1.0791,
+            "value": 9.3681
+          },
+          {
+            "feature": "country_factor",
+            "contribution_log1p": -0.4401,
+            "value": 0.2178
+          },
+          {
+            "feature": "magnitude",
+            "contribution_log1p": 0.1783,
+            "value": 7.8
+          },
+          {
+            "feature": "log_pop_mmi8",
+            "contribution_log1p": 0.1619,
+            "value": 14.4719
+          },
+          {
+            "feature": "log_pop_mmi6",
+            "contribution_log1p": 0.1119,
+            "value": 16.4169
+          },
+          {
+            "feature": "log_pop_mmi5",
+            "contribution_log1p": -0.0865,
+            "value": 16.9438
+          },
+          {
+            "feature": "log_pop_mmi7",
+            "contribution_log1p": -0.0725,
+            "value": 15.6645
+          },
+          {
+            "feature": "region_factor",
+            "contribution_log1p": 0.0605,
+            "value": 0.2033
+          }
+        ]
+      }
+    },
+    "nepal-2015": {
+      "event_id": "us20002926",
+      "magnitude": 7.8,
+      "ncei_id": 10134.0,
+      "country_factor": -0.1323,
+      "prior_deaths": 4524,
+      "deaths": {
+        "p10": 33,
+        "p50": 990,
+        "p90": 14876,
+        "ncei": 8957.0,
+        "official": 8790,
+        "inside_p10_p90": true,
+        "same_pager_bin": false,
+        "log10_error_p50": 0.956,
+        "other_variant": {
+          "p10": 21,
+          "p50": 1597,
+          "p90": 18316
+        },
+        "pager_baseline": 6140,
+        "pager_baseline_detail": {
+          "NP_params_on_total_exposure": 6140,
+          "note": "the 2015 PAGER file has no per-country split, so Nepal's parameters are applied to all exposed people"
+        },
+        "baseline_log10_error": 0.164,
+        "model_beats_baseline": false
+      },
+      "injured": {
+        "p10": 2693,
+        "p50": 18669,
+        "p90": 42014,
+        "ncei": 24000.0,
+        "official": 22300,
+        "inside_p10_p90": true,
+        "same_pager_bin": true,
+        "log10_error_p50": 0.109,
+        "other_variant": {
+          "p10": 1853,
+          "p50": 22517,
+          "p90": 40858
+        }
+      },
+      "official_note": "Nepal Post Disaster Needs Assessment (includes the 12 May aftershock)",
+      "official_source": "https://www.gfdrr.org/sites/default/files/publication/pda-2015-nepal-vola.pdf",
+      "contributions_p50_deaths": {
+        "prior_log1p": 8.4173,
+        "booster_base_log1p": -0.4098,
+        "prediction_log1p": 6.899,
+        "top": [
+          {
+            "feature": "log_global_expected",
+            "contribution_log1p": -1.0906,
+            "value": 8.722
+          },
+          {
+            "feature": "country_factor",
+            "contribution_log1p": -0.3376,
+            "value": -0.1323
+          },
+          {
+            "feature": "log_pop_mmi8",
+            "contribution_log1p": 0.2238,
+            "value": 14.8749
+          },
+          {
+            "feature": "magnitude",
+            "contribution_log1p": 0.1628,
+            "value": 7.8
+          },
+          {
+            "feature": "log_pop_mmi5",
+            "contribution_log1p": -0.0852,
+            "value": 18.2493
+          },
+          {
+            "feature": "log_pop_mmi7",
+            "contribution_log1p": -0.0713,
+            "value": 15.0843
+          },
+          {
+            "feature": "log_pop_mmi6",
+            "contribution_log1p": 0.0532,
+            "value": 17.5266
+          },
+          {
+            "feature": "hour_cos",
+            "contribution_log1p": -0.036,
+            "value": -0.9998
+          }
+        ]
+      }
+    }
+  }
+}

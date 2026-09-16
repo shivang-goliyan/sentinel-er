@@ -1,5 +1,5 @@
 {
-  "built_at": "2026-09-16T09:34:50+00:00",
+  "built_at": "2026-09-16T12:45:25+00:00",
   "sampling": {
     "always_kept": "PAGER alert yellow/orange/red, or magnitude >= 6.0, or a holdout event",
     "sampled": "1500 of the remaining 9064 green / no-alert events below M6.0, uniform random (seed 7), weight 6.043 each",
@@ -8,14 +8,17 @@
     "pool_size": 9064
   },
   "comcat": {
-    "picked": 385,
-    "pager_parse_failed": 0,
-    "failure_reasons": {}
+    "picked": 3549,
+    "pager_parse_failed": 2,
+    "failure_reasons": {
+      "fetch failed: gave up on https://earthquake.usgs.gov/fdsnws/event/1/query {'eventid': 'us20008uzn', 'format': 'geojson'}": 1,
+      "fetch failed: gave up on https://earthquake.usgs.gov/fdsnws/event/1/query {'eventid': 'us100097hq', 'format': 'geojson'}": 1
+    }
   },
   "ncei_rows_with_time": 3873,
   "ncei_join": {
     "rule": "origin time within 60 s, epicentres within 100 km, magnitude within 0.3; nearest in time wins; each NCEI row used once",
-    "comcat_matched": 96,
+    "comcat_matched": 455,
     "deaths_label": "NCEI `deaths`, else `deathsTotal`; unmatched events = 0 (NCEI lists every earthquake that caused deaths)",
     "injured_label": "NCEI `injuries`, else `injuriesTotal`; unknown otherwise (row excluded from the injury model)"
   },
@@ -25,39 +28,40 @@
     "pagercat_join": "PAGER-CAT eqID // 100 == EXPO-CAT eqID; PAGER-CAT minutes holding two events are skipped (67 rows)",
     "injuries_known": 914,
     "deaths_rule": "PAGER_prefShakingDeaths; 0 when both shaking and total deaths are blank (no source catalogue reported any); dropped when only total deaths are known",
-    "dropped_as_comcat_duplicates": 4
+    "dropped_as_comcat_duplicates": 6
   },
   "country": {
     "rule": "EXPO-CAT ISO code where given; otherwise the Natural Earth 1:50m country containing the epicentre, or the nearest one within 500 km; otherwise PAGER's ccode",
-    "unknown_country_rows": 28,
+    "unknown_country_rows": 377,
     "income_sources": {
-      "oghist": 5782,
-      "oghist-nearest": 171,
-      "unknown": 51
+      "oghist": 7639,
+      "oghist-nearest": 1007,
+      "unknown": 518
     },
     "income_rule": "World Bank OGHIST class for calendar-year data (event year - 1), clipped to 1987-2023; nearest listed year if that one is blank; countries not in OGHIST use today's API class",
     "gdp_rule": "World Bank NY.GDP.PCAP.CD for (event year - 1), nearest year within 10 years"
   },
   "sequences": {
     "rule": "Gardner & Knopoff (1974) space-time windows (van Stiphout et al. 2012 fit), largest event first; foreshock side capped at 30 days",
-    "groups": 3904
+    "groups": 5988
   },
   "holdout_rule": "events within 200 km and 30 days before to 365 days after each holdout mainshock, the listed ids, and anything grouped into the same sequence",
   "rows": {
-    "total": 6004,
+    "total": 9164,
     "by_source": {
-      "expocat": 5619,
-      "comcat": 385
+      "expocat": 5617,
+      "comcat": 3547
     },
     "holdout": {
-      "": 6003,
-      "nepal-2015": 1
+      "": 9150,
+      "nepal-2015": 7,
+      "turkey-2023": 7
     },
-    "train_deaths_model": 6003,
-    "train_deaths_gt0": 630,
-    "train_injury_model": 965,
-    "train_injured_gt0": 941
+    "train_deaths_model": 9150,
+    "train_deaths_gt0": 816,
+    "train_injury_model": 1167,
+    "train_injured_gt0": 1143
   },
-  "http_requests_this_run": 2,
-  "wall_seconds": 15.0
+  "http_requests_this_run": 12,
+  "wall_seconds": 95.2
 }

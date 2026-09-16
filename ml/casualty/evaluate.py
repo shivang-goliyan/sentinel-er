@@ -18,8 +18,8 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 from build_dataset import HOLDOUTS, PAGER_DIR, parse_pager_xml  # noqa: E402
-from train import (ARTIFACTS, CATALOGS, DERIVED, QUANTILES, add_features, pager_bin,  # noqa: E402
-                   weighted_median)
+from casualty_model import QUANTILES, CasualtyModel  # noqa: E402
+from train import ARTIFACTS, CATALOGS, DERIVED, pager_bin  # noqa: E402
 
 CHARTS = ARTIFACTS / "charts"
 
@@ -44,6 +44,7 @@ FG = "#e6e9ef"
 MUTED = "#8a93a6"
 ACCENT = "#4cc9f0"
 TRUTH = "#f4a261"
+DOWN = "#f07178"
 BASE = "#b392f0"
 GRID = "#262b36"
 
@@ -73,10 +74,13 @@ def baseline_turkey(params):
     for c in exp["population_exposure"]["country_exposures"]:
         tb = params.get(c["country_code"])
         if tb:
-            per_country[c["country_code"]] = float(np.dot(np.asarray(c["exposure"], float), pager_rates(*tb)))
-    tr = int(round(per_country["TR"]))
+            # USGS truncates each country's figure, then sums
+            per_country[c["country_code"]] = int(np.dot(np.asarray(c["exposure"], float), pager_rates(*tb)))
+    tr = per_country["TR"]
     assert tr == 21546, f"PAGER baseline for Turkey came out {tr}, USGS published 21,546"
-    return float(sum(per_country.values())), {"TR": tr, "total_all_countries": round(sum(per_country.values()))}
+    total = sum(per_country.values())
+    return float(total), {"TR": tr, "SY": per_country.get("SY"), "total_all_countries": total,
+                          "matches_usgs_losses_json": total == 21573}
 
 
 def baseline_nepal(params):
@@ -88,13 +92,13 @@ def baseline_nepal(params):
                            "to all exposed people"}
 
 
-def load_models(folder, target):
-    return {q: lgb.Booster(model_file=str(folder / f"model_{target}_p{int(q * 100)}.txt")) for q in QUANTILES}
-
-
-def predict(models, X):
-    raw = np.sort(np.column_stack([models[q].predict(X) for q in QUANTILES]), axis=1)
-    return np.clip(np.expm1(raw), 0, None)
+def other_variant(feat_info):
+    model = CasualtyModel(ARTIFACTS)
+    model.features = feat_info["other_variant_features"]
+    folder = DERIVED / "models_other_variant"
+    model.boosters = {t: {q: lgb.Booster(model_file=str(folder / f"model_{t}_p{int(q * 100)}.txt"))
+                          for q in QUANTILES} for t in ("deaths", "injured")}
+    return model
 
 
 def log_error(pred, truth):
@@ -105,26 +109,27 @@ def main():
     style()
     CHARTS.mkdir(parents=True, exist_ok=True)
     feat_info = json.loads((ARTIFACTS / "features.json").read_text())
-    feats = feat_info["features"]
-    other_feats = feat_info["other_variant_features"]
     metrics = json.loads((ARTIFACTS / "metrics.json").read_text())
-    table = add_features(pd.read_csv(ARTIFACTS / "training_table.csv.gz", parse_dates=["time"]))
+    table = pd.read_csv(ARTIFACTS / "training_table.csv.gz", parse_dates=["time"])
     params = fatality_params()
 
-    models = {t: load_models(ARTIFACTS, t) for t in ("deaths", "injured")}
-    other = {t: load_models(DERIVED / "models_other_variant", t) for t in ("deaths", "injured")}
+    model = CasualtyModel(ARTIFACTS)
+    other = other_variant(feat_info)
     baselines = {"turkey-2023": baseline_turkey(params), "nepal-2015": baseline_nepal(params)}
 
     holdout = {"variant": feat_info["variant"], "events": {}}
     for name, h in HOLDOUTS.items():
         row = table[table["event_id"] == h["id"]]
         assert len(row) == 1, f"holdout {h['id']} missing from the training table"
-        X = row[feats]
+        preds, ready = model.predict(row)
+        other_preds, _ = other.predict(row)
         entry = {"event_id": h["id"], "magnitude": float(row["magnitude"].iloc[0]),
-                 "ncei_id": row["ncei_id"].iloc[0] if "ncei_id" in row else None}
+                 "ncei_id": row["ncei_id"].iloc[0] if "ncei_id" in row else None,
+                 "country_factor": round(float(ready["country_factor"].iloc[0]), 4),
+                 "prior_deaths": round(float(np.expm1(ready["prior_log1p"].iloc[0])))}
         for target in ("deaths", "injured"):
-            p = predict(models[target], X)[0]
-            po = predict(other[target], row[other_feats])[0]
+            p = preds[target].iloc[0].to_numpy()
+            po = other_preds[target].iloc[0].to_numpy()
             truth = float(row[target].iloc[0]) if pd.notna(row[target].iloc[0]) else None
             entry[target] = {
                 "p10": round(p[0]), "p50": round(p[1]), "p90": round(p[2]),
@@ -144,16 +149,9 @@ def main():
         entry["official_note"] = OFFICIAL[name]["label"]
         entry["official_source"] = OFFICIAL[name]["source"]
 
-        booster = models["deaths"][0.5]
-        contrib = booster.predict(X, pred_contrib=True)[0]
-        pairs = sorted(zip(feats, contrib[:-1], X.iloc[0].tolist()), key=lambda t: -abs(t[1]))
-        entry["contributions_p50_deaths"] = {
-            "base_value_log1p": round(float(contrib[-1]), 4),
-            "prediction_log1p": round(float(contrib.sum()), 4),
-            "top": [{"feature": f, "contribution_log1p": round(float(c), 4),
-                     "value": None if v is None or (isinstance(v, float) and math.isnan(v)) else round(float(v), 4)}
-                    for f, c, v in pairs[:8]],
-        }
+        explained = model.explain(ready)
+        explained["top"] = explained.pop("contributions")[:8]
+        entry["contributions_p50_deaths"] = explained
         holdout["events"][name] = entry
     (ARTIFACTS / "holdout.json").write_text(json.dumps(holdout, indent=2, default=str))
 
@@ -215,6 +213,17 @@ def main():
         for n, e in holdout["events"].items()
     }
     metrics["injury_ratio"] = injury_ratio
+    big = metrics["cv"][feat_info["variant"]]["deaths"].get("rows_1000_plus", {})
+    base = metrics["cv_vs_pager_baseline"]["all_rows"]
+    top_gap = metrics["calibration_deaths"]["by_model_p50"].get("1000-10000", {})
+    metrics["catastrophic_events"] = (
+        f"Weak spot. On the {big.get('rows')} training events with 1,000+ deaths the out-of-fold median is off by "
+        f"{big.get('median_abs_log10_error')} log10 (median) and the p10-p90 band holds the truth only "
+        f"{big.get('interval_80_coverage'):.0%} of the time. The PAGER empirical baseline is much closer on "
+        f"those events (mean log10 error {base['pager_baseline']['mean_abs_log10_error_1000_plus']} vs "
+        f"{base['model_p50']['mean_abs_log10_error_1000_plus']}). When the model's median is 1,000-10,000 the "
+        f"truth has run {top_gap.get('model_p50_gap')} log10 higher ({top_gap.get('events')} events): "
+        "treat the median as a floor and plan on p90.")
     (ARTIFACTS / "metrics.json").write_text(json.dumps(metrics, indent=2))
 
     chart_holdout(holdout)
@@ -233,7 +242,7 @@ def save_chart(fig, name, data):
 
 def chart_holdout(holdout):
     names = {"turkey-2023": "Türkiye 2023 · M7.8", "nepal-2015": "Nepal 2015 · M7.8"}
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5.2))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.2), sharey=True)
     data = []
     for ax, target in zip(axes, ("deaths", "injured")):
         for i, (key, e) in enumerate(holdout["events"].items()):
@@ -245,6 +254,8 @@ def chart_holdout(holdout):
             if d["ncei"]:
                 ax.scatter([d["ncei"]], [yv], marker="D", color=TRUTH, s=110, zorder=4,
                            label="recorded (NOAA NCEI)" if i == 0 else None)
+                ax.annotate(f"{d['ncei']:,.0f}", (d["ncei"], yv), textcoords="offset points", xytext=(0, 12),
+                            ha="center", color=TRUTH, fontsize=11)
             if target == "deaths":
                 ax.scatter([d["pager_baseline"]], [yv], marker="s", color=BASE, s=90, zorder=4,
                            label="USGS PAGER empirical model" if i == 0 else None)
@@ -253,6 +264,7 @@ def chart_holdout(holdout):
         ax.set_xscale("log")
         ax.set_yticks(range(len(holdout["events"])))
         ax.set_yticklabels([names[k] for k in reversed(list(holdout["events"]))])
+        ax.tick_params(axis="y", length=0)
         ax.set_title("Deaths" if target == "deaths" else "Injured")
         ax.set_ylim(-0.7, len(holdout["events"]) - 0.3)
         ax.grid(axis="y", visible=False)
@@ -283,23 +295,28 @@ def chart_calibration(cv):
 
 def chart_bias(bias):
     groups = bias["by_income_class"]
-    order = [k for k in ("Low", "Lower-middle", "Upper-middle", "High", "Unknown") if k in groups]
-    cover = [groups[k]["coverage_deadly"] or 0 for k in order]
-    resid = [groups[k]["median_residual_log10_deadly"] or 0 for k in order]
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.8))
-    axes[0].bar(order, cover, color=ACCENT)
+    names = {"Low": "Low", "Lower-middle": "Lower-\nmiddle", "Upper-middle": "Upper-\nmiddle", "High": "High"}
+    # groups with a handful of deadly events say nothing either way
+    order = [k for k in names if k in groups and groups[k]["rows_with_deaths"] >= 10]
+    cover = [groups[k]["coverage_deadly"] for k in order]
+    gap = [groups[k]["median_residual_log10_deadly"] for k in order]
+    labels = [f"{names[k]}\n({groups[k]['rows_with_deaths']})" for k in order]
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+    axes[0].bar(labels, cover, color=ACCENT)
     axes[0].axhline(0.8, color=TRUTH, ls="--", lw=1.2, label="target 80%")
     axes[0].set_ylim(0, 1)
-    axes[0].set_title("Interval coverage, deadly events")
-    axes[0].legend()
-    axes[1].bar(order, resid, color=[BASE if r > 0 else ACCENT for r in resid])
+    axes[0].set_title("Truth inside the 10–90% band")
+    axes[0].legend(loc="upper right")
+    axes[1].bar(labels, gap, color=DOWN)
     axes[1].axhline(0, color=MUTED, lw=1)
-    axes[1].set_title("Median error (log10), deadly events")
-    axes[1].set_ylabel("over-predicts ↑   under-predicts ↓")
-    for ax in axes:
-        ax.tick_params(axis="x", rotation=15)
+    axes[1].set_ylim(min(gap) * 1.3, 0.1)
+    axes[1].set_title("Median gap, log10 (below 0 = too low)")
+    for ax, values, fmt in ((axes[0], cover, "{:.0%}"), (axes[1], gap, "{:+.2f}")):
+        for x, v in enumerate(values):
+            ax.text(x, v, fmt.format(v), ha="center", va="bottom" if v >= 0 else "top", color=FG, fontsize=12)
         ax.grid(axis="x", visible=False)
-    fig.suptitle("Does the model treat poorer and richer countries alike?", fontsize=17, fontweight="bold", y=1.03)
+    fig.suptitle("Deadly earthquakes by World Bank income class (event count)", fontsize=16,
+                 fontweight="bold", y=1.02)
     save_chart(fig, "bias", {k: groups[k] for k in order})
 
 
@@ -308,20 +325,40 @@ def chart_contributions(holdout):
         "log_pop_mmi9": "people at MMI 9", "log_pop_mmi8": "people at MMI 8", "log_pop_mmi7": "people at MMI 7",
         "log_pop_mmi6": "people at MMI 6", "log_pop_mmi5": "people at MMI 5", "log_pop_mmi4": "people at MMI 4",
         "log_pop_mmi10": "people at MMI 10", "magnitude": "magnitude", "depth_km": "depth",
-        "hour_sin": "time of day", "hour_cos": "time of day (cos)", "is_night": "night-time",
+        "hour_sin": "time of day", "hour_cos": "time of day", "is_night": "night-time",
         "income_class": "country income class", "log_gdp_per_capita": "GDP per capita",
-        "pager_alert": "PAGER alert",
+        "log_global_expected": "size of the physical estimate", "country_factor": "country's past record",
+        "region_factor": "region's past record", "pager_alert": "PAGER alert",
     }
     e = holdout["events"]["turkey-2023"]["contributions_p50_deaths"]
-    top = e["top"][:6][::-1]
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.barh([pretty.get(t["feature"], t["feature"]) for t in top], [t["contribution_log1p"] for t in top],
-            color=[ACCENT if t["contribution_log1p"] > 0 else BASE for t in top])
-    ax.axvline(0, color=MUTED, lw=1)
-    ax.set_xlabel("push on predicted deaths (log scale)")
-    ax.set_title("Why the model predicted what it did — Türkiye 2023")
+    start = e["prior_log1p"]
+    top = e["top"][:5]
+    rest = e["prediction_log1p"] - start - e["booster_base_log1p"] - sum(t["contribution_log1p"] for t in top)
+    steps = ([("typical correction", e["booster_base_log1p"])]
+             + [(pretty.get(t["feature"], t["feature"]), t["contribution_log1p"]) for t in top]
+             + [("everything else", rest)])
+    fig, ax = plt.subplots(figsize=(11, 5.8))
+    labels = ["physical estimate\n(exposure × fatality rate\n× country record)"]
+    ax.barh(0, start, color=MUTED)
+    level = start
+    for k, (label, delta) in enumerate(steps, 1):
+        ax.barh(k, delta, left=level, color=ACCENT if delta > 0 else DOWN)
+        level += delta
+        labels.append(label)
+    ax.barh(len(steps) + 1, level, color=TRUTH)
+    labels.append("model median")
+    for k, value in ((0, start), (len(steps) + 1, level)):
+        ax.text(value, k, f"  {math.expm1(value):,.0f}", va="center", color=FG, fontsize=12)
+    ax.set_yticks(range(len(labels)))
+    ax.set_yticklabels(labels)
+    ax.invert_yaxis()
+    ax.set_xticks([t * math.log(10) for t in range(6)])
+    ax.set_xticklabels(["0", "10", "100", "1k", "10k", "100k"])
+    ax.set_xlim(0, 5.3 * math.log(10))
+    ax.set_xlabel("deaths (log scale)   ·   blue pushes up, red pushes down")
+    ax.set_title("How the model reached its median — Türkiye 2023")
     ax.grid(axis="y", visible=False)
-    save_chart(fig, "contributions_turkey", e)
+    save_chart(fig, "contributions_turkey", {"start_log1p": start, "steps": steps, "prediction_log1p": level, **e})
 
 
 if __name__ == "__main__":

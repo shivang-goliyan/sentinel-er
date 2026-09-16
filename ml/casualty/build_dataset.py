@@ -216,20 +216,33 @@ def load_pager_cache():
     done = {}
     if path.exists():
         for line in path.read_text().splitlines():
-            if line.strip():
+            try:
                 row = json.loads(line)
-                done[row["event_id"]] = row
+            except json.JSONDecodeError:
+                continue  # a line cut short by an interrupted run is fetched again
+            done[row["event_id"]] = row
     return done
 
 
 def fetch_pager_rows(event_ids, keep_raw):
     cache = load_pager_cache()
-    todo = [e for e in event_ids if e not in cache]
+    # network failures are retried on the next run; parse failures and missing products are not
+    todo = [e for e in event_ids if e not in cache or cache[e].get("error", "").startswith("fetch failed")]
     out_path = PAGER_DIR / "parsed.jsonl"
     write_lock = threading.Lock()
     print(f"pager.xml: {len(cache)} cached, {len(todo)} to fetch")
 
     def work(event_id):
+        try:
+            return fetch_one(event_id)
+        except RuntimeError as err:
+            row = {"event_id": event_id, "ok": False, "error": f"fetch failed: {err}"}
+            with write_lock:
+                with out_path.open("a") as fh:
+                    fh.write(json.dumps(row) + "\n")
+            return row
+
+    def fetch_one(event_id):
         urls = pager_url_for(event_id)
         row = {"event_id": event_id, "ok": False}
         if urls and urls["pager_xml"]:

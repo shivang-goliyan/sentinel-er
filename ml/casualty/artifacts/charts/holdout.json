@@ -1,0 +1,42 @@
+[
+  {
+    "event": "turkey-2023",
+    "target": "deaths",
+    "p10": 88,
+    "p50": 4070,
+    "p90": 55385,
+    "ncei": 56697.0,
+    "official": 53537,
+    "pager_baseline": 21573
+  },
+  {
+    "event": "nepal-2015",
+    "target": "deaths",
+    "p10": 33,
+    "p50": 990,
+    "p90": 14876,
+    "ncei": 8957.0,
+    "official": 8790,
+    "pager_baseline": 6140
+  },
+  {
+    "event": "turkey-2023",
+    "target": "injured",
+    "p10": 5641,
+    "p50": 35067,
+    "p90": 155705,
+    "ncei": 119200.0,
+    "official": 107213,
+    "pager_baseline": null
+  },
+  {
+    "event": "nepal-2015",
+    "target": "injured",
+    "p10": 2693,
+    "p50": 18669,
+    "p90": 42014,
+    "ncei": 24000.0,
+    "official": 22300,
+    "pager_baseline": null
+  }
+]

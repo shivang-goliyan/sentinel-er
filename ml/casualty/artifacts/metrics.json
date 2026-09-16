@@ -6,7 +6,7 @@
   ],
   "params": {
     "objective": "quantile",
-    "learning_rate": 0.03,
+    "learning_rate": 0.05,
     "n_estimators": 600,
     "num_leaves": 15,
     "min_child_samples": 20,
@@ -17,88 +17,331 @@
     "n_jobs": 2,
     "random_state": 11
   },
+  "target_transform": "log1p",
+  "structure": "log1p(target_q) = physical prior + LightGBM quantile booster. Prior = people at each MMI x global PAGER curve (theta 14.572, beta 0.205, median of USGS fatality.xml), x 10^country_factor; injuries add a learned constant shift",
+  "folds": "5-fold GroupKFold by earthquake sequence; country/region factors re-learned inside each fold",
+  "rows_dropped_deaths_booked_to_mainshock": 951,
+  "drop_rule": "a smaller event in a sequence whose largest event killed people, recorded with 0 deaths (NCEI books sequence deaths to the mainshock)",
   "cv": {
     "without_pager_alert": {
       "deaths": {
         "all_rows_weighted": {
-          "rows": 6003,
-          "bin_accuracy": 0.8884,
+          "rows": 8199,
+          "bin_accuracy": 0.934,
           "median_abs_log10_error": 0.0,
-          "interval_80_coverage": 0.9572
+          "mean_abs_log10_error": 0.0542,
+          "interval_80_coverage": 0.9819,
+          "pinball_log1p": 0.0424
         },
         "rows_above_zero": {
-          "rows": 630,
-          "bin_accuracy": 0.1397,
-          "median_abs_log10_error": 0.6234,
-          "interval_80_coverage": 0.5921
+          "rows": 816,
+          "bin_accuracy": 0.299,
+          "median_abs_log10_error": 0.4771,
+          "mean_abs_log10_error": 0.6655,
+          "interval_80_coverage": 0.6998,
+          "pinball_log1p": 0.5108
+        },
+        "rows_1000_plus": {
+          "rows": 59,
+          "bin_accuracy": 0.0678,
+          "median_abs_log10_error": 1.6328,
+          "mean_abs_log10_error": 1.7162,
+          "interval_80_coverage": 0.322,
+          "pinball_log1p": 1.3471
         }
       },
       "injured": {
         "all_rows_weighted": {
-          "rows": 965,
-          "bin_accuracy": 0.4518,
-          "median_abs_log10_error": 0.5095,
-          "interval_80_coverage": 0.658
+          "rows": 1092,
+          "bin_accuracy": 0.4674,
+          "median_abs_log10_error": 0.4859,
+          "mean_abs_log10_error": 0.5893,
+          "interval_80_coverage": 0.6034,
+          "pinball_log1p": 0.463
         },
         "rows_above_zero": {
-          "rows": 941,
-          "bin_accuracy": 0.4633,
-          "median_abs_log10_error": 0.5004,
-          "interval_80_coverage": 0.6706
+          "rows": 1068,
+          "bin_accuracy": 0.4747,
+          "median_abs_log10_error": 0.476,
+          "mean_abs_log10_error": 0.5826,
+          "interval_80_coverage": 0.6142,
+          "pinball_log1p": 0.4553
+        },
+        "rows_1000_plus": {
+          "rows": 127,
+          "bin_accuracy": 0.3071,
+          "median_abs_log10_error": 0.8398,
+          "mean_abs_log10_error": 0.9485,
+          "interval_80_coverage": 0.3465,
+          "pinball_log1p": 0.8229
         }
       }
     },
     "with_pager_alert": {
       "deaths": {
         "all_rows_weighted": {
-          "rows": 6003,
-          "bin_accuracy": 0.8871,
+          "rows": 8199,
+          "bin_accuracy": 0.935,
           "median_abs_log10_error": 0.0,
-          "interval_80_coverage": 0.9567
+          "mean_abs_log10_error": 0.0537,
+          "interval_80_coverage": 0.9819,
+          "pinball_log1p": 0.0423
         },
         "rows_above_zero": {
-          "rows": 630,
-          "bin_accuracy": 0.146,
-          "median_abs_log10_error": 0.6098,
-          "interval_80_coverage": 0.5873
+          "rows": 816,
+          "bin_accuracy": 0.2929,
+          "median_abs_log10_error": 0.4771,
+          "mean_abs_log10_error": 0.661,
+          "interval_80_coverage": 0.6998,
+          "pinball_log1p": 0.5075
+        },
+        "rows_1000_plus": {
+          "rows": 59,
+          "bin_accuracy": 0.0678,
+          "median_abs_log10_error": 1.6373,
+          "mean_abs_log10_error": 1.7118,
+          "interval_80_coverage": 0.3051,
+          "pinball_log1p": 1.3441
         }
       },
       "injured": {
         "all_rows_weighted": {
-          "rows": 965,
-          "bin_accuracy": 0.4642,
-          "median_abs_log10_error": 0.5053,
-          "interval_80_coverage": 0.656
+          "rows": 1092,
+          "bin_accuracy": 0.4817,
+          "median_abs_log10_error": 0.4665,
+          "mean_abs_log10_error": 0.5802,
+          "interval_80_coverage": 0.5792,
+          "pinball_log1p": 0.4617
         },
         "rows_above_zero": {
-          "rows": 941,
-          "bin_accuracy": 0.4761,
-          "median_abs_log10_error": 0.4977,
-          "interval_80_coverage": 0.6684
+          "rows": 1068,
+          "bin_accuracy": 0.485,
+          "median_abs_log10_error": 0.4652,
+          "mean_abs_log10_error": 0.5778,
+          "interval_80_coverage": 0.5899,
+          "pinball_log1p": 0.4566
+        },
+        "rows_1000_plus": {
+          "rows": 127,
+          "bin_accuracy": 0.3071,
+          "median_abs_log10_error": 0.8184,
+          "mean_abs_log10_error": 0.9749,
+          "interval_80_coverage": 0.3386,
+          "pinball_log1p": 0.8427
+        }
+      }
+    },
+    "prior_only_reference": {
+      "deaths": {
+        "all_rows_weighted": {
+          "rows": 8199,
+          "bin_accuracy": 0.8831,
+          "median_abs_log10_error": 0.0,
+          "mean_abs_log10_error": 0.1101,
+          "interval_80_coverage": 0.8921,
+          "pinball_log1p": 0.1268
+        },
+        "rows_above_zero": {
+          "rows": 816,
+          "bin_accuracy": 0.3529,
+          "median_abs_log10_error": 0.5694,
+          "mean_abs_log10_error": 0.7249,
+          "interval_80_coverage": 0.1654,
+          "pinball_log1p": 0.8346
+        },
+        "rows_1000_plus": {
+          "rows": 59,
+          "bin_accuracy": 0.3559,
+          "median_abs_log10_error": 0.7326,
+          "mean_abs_log10_error": 0.9677,
+          "interval_80_coverage": 0.0,
+          "pinball_log1p": 1.1141
+        }
+      },
+      "injured": {
+        "all_rows_weighted": {
+          "rows": 1092,
+          "bin_accuracy": 0.419,
+          "median_abs_log10_error": 0.5613,
+          "mean_abs_log10_error": 0.6936,
+          "interval_80_coverage": 0.0519,
+          "pinball_log1p": 0.7986
+        },
+        "rows_above_zero": {
+          "rows": 1068,
+          "bin_accuracy": 0.4288,
+          "median_abs_log10_error": 0.5509,
+          "mean_abs_log10_error": 0.6836,
+          "interval_80_coverage": 0.0543,
+          "pinball_log1p": 0.787
+        },
+        "rows_1000_plus": {
+          "rows": 127,
+          "bin_accuracy": 0.378,
+          "median_abs_log10_error": 0.6922,
+          "mean_abs_log10_error": 0.9347,
+          "interval_80_coverage": 0.0,
+          "pinball_log1p": 1.0761
         }
       }
     }
   },
-  "target_transform": "log1p",
-  "folds": "5-fold GroupKFold by earthquake sequence",
   "cv_vs_pager_baseline": {
-    "note": "Baseline = PAGER empirical model with the epicentre country's parameters on the total exposure (an approximation of the per-country original). The baseline was calibrated on much of the 1960-2007 catalogue, so its pre-2008 scores are partly in-sample; the from_2008 rows are the fairer comparison.",
+    "note": "pager_baseline = USGS PAGER empirical model with the epicentre country's parameters on the total exposure (an approximation of the per-country original). USGS calibrated those parameters on much of the 1960-2007 catalogue, so its pre-2008 scores are partly in-sample; from_2008 is the fairer comparison. prior_only = our starting point with no booster.",
     "all_rows": {
-      "rows": 5855,
-      "baseline_bin_accuracy": 0.7313,
-      "model_bin_accuracy": 0.8888,
-      "baseline_median_abs_log10_error_deaths_gt0": 0.4952,
-      "model_median_abs_log10_error_deaths_gt0": 0.6258
+      "rows": 7593,
+      "model_p50": {
+        "bin_accuracy_weighted": 0.927,
+        "median_abs_log10_error_deadly": 0.4771,
+        "mean_abs_log10_error_1000_plus": 1.7264
+      },
+      "prior_only": {
+        "bin_accuracy_weighted": 0.8698,
+        "median_abs_log10_error_deadly": 0.5711,
+        "mean_abs_log10_error_1000_plus": 0.9707
+      },
+      "pager_baseline": {
+        "bin_accuracy_weighted": 0.8832,
+        "median_abs_log10_error_deadly": 0.4918,
+        "mean_abs_log10_error_1000_plus": 0.6904
+      }
     },
     "from_2008": {
-      "rows": 337,
-      "baseline_bin_accuracy": 0.8249,
-      "model_bin_accuracy": 0.8872,
-      "baseline_median_abs_log10_error_deaths_gt0": 0.338,
-      "model_median_abs_log10_error_deaths_gt0": 0.6378
+      "rows": 2712,
+      "model_p50": {
+        "bin_accuracy_weighted": 0.9728,
+        "median_abs_log10_error_deadly": 0.4525,
+        "mean_abs_log10_error_1000_plus": 1.5301
+      },
+      "prior_only": {
+        "bin_accuracy_weighted": 0.9634,
+        "median_abs_log10_error_deadly": 0.4492,
+        "mean_abs_log10_error_1000_plus": 0.7264
+      },
+      "pager_baseline": {
+        "bin_accuracy_weighted": 0.9649,
+        "median_abs_log10_error_deadly": 0.4661,
+        "mean_abs_log10_error_1000_plus": 0.6194
+      }
+    }
+  },
+  "calibration_deaths": {
+    "note": "median log10 gap, truth minus prediction; 0 = calibrated, +0.3 = truth about 2x higher, -1 = truth 10x lower",
+    "by_prior": {
+      "0-10": {
+        "events": 7433,
+        "model_p50_gap": 0.0,
+        "prior_gap": -0.0,
+        "inside_p10_p90": 0.979
+      },
+      "10-100": {
+        "events": 471,
+        "model_p50_gap": -0.272,
+        "prior_gap": -1.139,
+        "inside_p10_p90": 0.902
+      },
+      "100-1000": {
+        "events": 228,
+        "model_p50_gap": -0.409,
+        "prior_gap": -1.561,
+        "inside_p10_p90": 0.781
+      },
+      "1000-10000": {
+        "events": 57,
+        "model_p50_gap": 0.195,
+        "prior_gap": -0.802,
+        "inside_p10_p90": 0.632
+      },
+      "10000+": {
+        "events": 10,
+        "model_p50_gap": 0.304,
+        "prior_gap": -0.794,
+        "inside_p10_p90": 0.9
+      }
+    },
+    "by_model_p50": {
+      "0-10": {
+        "events": 7942,
+        "model_p50_gap": 0.0,
+        "prior_gap": -0.001,
+        "inside_p10_p90": 0.975
+      },
+      "10-100": {
+        "events": 195,
+        "model_p50_gap": -0.325,
+        "prior_gap": -1.315,
+        "inside_p10_p90": 0.749
+      },
+      "100-1000": {
+        "events": 48,
+        "model_p50_gap": 0.32,
+        "prior_gap": -0.689,
+        "inside_p10_p90": 0.562
+      },
+      "1000-10000": {
+        "events": 13,
+        "model_p50_gap": 0.672,
+        "prior_gap": -0.307,
+        "inside_p10_p90": 0.846
+      },
+      "10000+": {
+        "events": 1,
+        "model_p50_gap": 1.17,
+        "prior_gap": 0.791,
+        "inside_p10_p90": 0.0
+      }
     }
   },
   "default_variant": "without_pager_alert",
-  "default_reason": "pager_alert did not clearly beat the model without it on out-of-fold deadly events (needs >= 0.1 log10 lower error and >= 2 points bin accuracy), and PAGER's alert can be revised after the fact, so the default leaves it out",
-  "wall_seconds": 16.4
+  "default_reason": "pager_alert did not clearly beat the model without it on out-of-fold deadly events (the bar: >= 0.1 log10 lower median error and >= 2 points bin accuracy); PAGER's alert is also revised after the fact, so the default leaves it out",
+  "wall_seconds": 29.7,
+  "holdout_verdict": "The model's p50 deaths does NOT beat the PAGER empirical baseline on the hold-outs.",
+  "holdout_summary": {
+    "turkey-2023": {
+      "deaths": {
+        "p10": 88,
+        "p50": 4070,
+        "p90": 55385,
+        "ncei": 56697.0,
+        "inside_p10_p90": false
+      },
+      "injured": {
+        "p10": 5641,
+        "p50": 35067,
+        "p90": 155705,
+        "ncei": 119200.0,
+        "inside_p10_p90": true
+      },
+      "pager_baseline_deaths": 21573
+    },
+    "nepal-2015": {
+      "deaths": {
+        "p10": 33,
+        "p50": 990,
+        "p90": 14876,
+        "ncei": 8957.0,
+        "inside_p10_p90": true
+      },
+      "injured": {
+        "p10": 2693,
+        "p50": 18669,
+        "p90": 42014,
+        "ncei": 24000.0,
+        "inside_p10_p90": true
+      },
+      "pager_baseline_deaths": 6140
+    }
+  },
+  "injury_ratio": {
+    "formula": "log1p(injured) = a + b*log1p(deaths) + c_LM + c_UM + c_H (low income is the reference)",
+    "a": 2.2984,
+    "b": 0.8301,
+    "c_lower_middle": 0.0344,
+    "c_upper_middle": 0.1892,
+    "c_high": 0.0643,
+    "rows": 1166,
+    "r2": 0.61,
+    "residual_sd": 1.46
+  },
+  "catastrophic_events": "Weak spot. On the 59 training events with 1,000+ deaths the out-of-fold median is off by 1.6328 log10 (median) and the p10-p90 band holds the truth only 32% of the time. The PAGER empirical baseline is much closer on those events (mean log10 error 0.6904 vs 1.7264). When the model's median is 1,000-10,000 the truth has run 0.672 log10 higher (13 events): treat the median as a floor and plan on p90."
 }

@@ -64,3 +64,44 @@ def test_windows_grow_with_magnitude():
     d6, t6 = bd.gk_window(6.0)
     d8, t8 = bd.gk_window(8.0)
     assert d8 > d6 and t8 > t6
+
+
+def test_factors_fall_back_to_region():
+    import casualty_model as cm
+
+    rows = pd.DataFrame({
+        "iso3": ["AAA", "AAA", "BBB"], "region": ["R1", "R1", "R1"],
+        "deaths": [1000.0, 10.0, 0.0], "global_expected": [100.0, 10.0, 5.0],
+    })
+    factors = cm.learn_factors(rows)
+    assert factors["iso3"]["AAA"]["factor"] > 0
+    assert factors["iso3"]["BBB"]["factor"] < 0
+    fresh = pd.DataFrame({"iso3": ["CCC"], "region": ["R1"], "global_expected": [50.0]})
+    out = cm.apply_factors(fresh, factors)
+    assert out["country_factor"].iloc[0] == factors["region"]["R1"]["factor"]
+    assert np.isclose(out["prior_log1p"].iloc[0], np.log1p(50 * 10 ** out["country_factor"].iloc[0]))
+
+
+def test_prior_rates_rise_with_shaking():
+    import casualty_model as cm
+
+    rates = cm.curve_rates(14.57, 0.205)
+    assert np.all(np.diff(rates) > 0)
+    assert rates[0] < 1e-6 < rates[-1] < 1
+
+
+def test_saved_model_adds_injury_shift():
+    import casualty_model as cm
+
+    folder = Path(__file__).resolve().parents[1] / "artifacts"
+    model = cm.CasualtyModel(folder)
+    row = pd.DataFrame([{
+        "pop_mmi4": 2e6, "pop_mmi5": 8e5, "pop_mmi6": 3e5, "pop_mmi7": 9e4, "pop_mmi8": 2e4, "pop_mmi9": 0,
+        "pop_mmi10": 0, "magnitude": 6.8, "depth_km": 12.0, "local_hour": 3.0, "income_class": 1,
+        "gdp_per_capita": 3000.0, "iso3": "NPL", "region": "South Asia", "pager_alert": np.nan}])
+    preds, ready = model.predict(row)
+    booster = model.boosters["injured"][0.5]
+    by_hand = np.expm1(booster.predict(ready[model.features])[0] + ready["prior_log1p"].iloc[0]
+                       + model.shift["injured"])
+    assert np.isclose(preds["injured"]["p50"].iloc[0], max(by_hand, 0), rtol=1e-6)
+    assert (preds["deaths"].iloc[0].diff().dropna() >= 0).all()

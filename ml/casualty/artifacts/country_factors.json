@@ -1,0 +1,643 @@
+{
+  "rule": "log10((recorded deaths + 10.0) / (curve-expected deaths + 10.0)) over the training rows; countries with no history fall back to their World Bank region, then 0",
+  "iso3": {
+    "AFG": {
+      "factor": 0.74416,
+      "events": 42
+    },
+    "AGO": {
+      "factor": -0.00022,
+      "events": 4
+    },
+    "ALB": {
+      "factor": -1.05586,
+      "events": 7
+    },
+    "ARG": {
+      "factor": -1.16684,
+      "events": 62
+    },
+    "ARM": {
+      "factor": 1.17024,
+      "events": 2
+    },
+    "ATA": {
+      "factor": 0.0,
+      "events": 24
+    },
+    "ATG": {
+      "factor": -1.6704,
+      "events": 9
+    },
+    "AUS": {
+      "factor": -0.71575,
+      "events": 53
+    },
+    "AZE": {
+      "factor": -1.87232,
+      "events": 4
+    },
+    "BDI": {
+      "factor": -0.00508,
+      "events": 1
+    },
+    "BEL": {
+      "factor": -0.37463,
+      "events": 4
+    },
+    "BGD": {
+      "factor": -1.3592,
+      "events": 17
+    },
+    "BGR": {
+      "factor": -0.10721,
+      "events": 3
+    },
+    "BIH": {
+      "factor": -0.80972,
+      "events": 8
+    },
+    "BLZ": {
+      "factor": -0.0204,
+      "events": 1
+    },
+    "BOL": {
+      "factor": 0.61109,
+      "events": 13
+    },
+    "BRA": {
+      "factor": 0.0348,
+      "events": 16
+    },
+    "BRB": {
+      "factor": -0.0,
+      "events": 2
+    },
+    "BTN": {
+      "factor": -0.34224,
+      "events": 3
+    },
+    "BWA": {
+      "factor": -0.04158,
+      "events": 2
+    },
+    "CAF": {
+      "factor": -0.00016,
+      "events": 5
+    },
+    "CAN": {
+      "factor": -0.82998,
+      "events": 67
+    },
+    "CHE": {
+      "factor": -0.00094,
+      "events": 5
+    },
+    "CHL": {
+      "factor": -1.33993,
+      "events": 273
+    },
+    "CHN": {
+      "factor": 0.66444,
+      "events": 336
+    },
+    "CMR": {
+      "factor": -0.00026,
+      "events": 3
+    },
+    "COD": {
+      "factor": -1.04883,
+      "events": 33
+    },
+    "COG": {
+      "factor": -0.0001,
+      "events": 3
+    },
+    "COL": {
+      "factor": -0.43303,
+      "events": 60
+    },
+    "CRI": {
+      "factor": -1.33317,
+      "events": 32
+    },
+    "CUB": {
+      "factor": -0.59533,
+      "events": 9
+    },
+    "CYM": {
+      "factor": -0.0718,
+      "events": 5
+    },
+    "CYP": {
+      "factor": -0.4607,
+      "events": 5
+    },
+    "CZE": {
+      "factor": -0.00328,
+      "events": 8
+    },
+    "DEU": {
+      "factor": -0.82531,
+      "events": 14
+    },
+    "DJI": {
+      "factor": -0.73601,
+      "events": 6
+    },
+    "DMA": {
+      "factor": -0.0137,
+      "events": 1
+    },
+    "DOM": {
+      "factor": -1.98876,
+      "events": 9
+    },
+    "DZA": {
+      "factor": 0.12294,
+      "events": 18
+    },
+    "ECU": {
+      "factor": -0.23913,
+      "events": 48
+    },
+    "EGY": {
+      "factor": -0.36219,
+      "events": 5
+    },
+    "ERI": {
+      "factor": -0.01321,
+      "events": 3
+    },
+    "ESP": {
+      "factor": -0.77016,
+      "events": 22
+    },
+    "EST": {
+      "factor": 0.0,
+      "events": 1
+    },
+    "ETH": {
+      "factor": -1.25259,
+      "events": 9
+    },
+    "FJI": {
+      "factor": -0.3779,
+      "events": 132
+    },
+    "FLK": {
+      "factor": 0.0,
+      "events": 2
+    },
+    "FRA": {
+      "factor": -0.05454,
+      "events": 17
+    },
+    "FSM": {
+      "factor": -0.11302,
+      "events": 11
+    },
+    "GAB": {
+      "factor": -0.00683,
+      "events": 2
+    },
+    "GBR": {
+      "factor": -0.02773,
+      "events": 6
+    },
+    "GEO": {
+      "factor": 0.36787,
+      "events": 5
+    },
+    "GHA": {
+      "factor": -0.0001,
+      "events": 1
+    },
+    "GIN": {
+      "factor": 1.23293,
+      "events": 1
+    },
+    "GNQ": {
+      "factor": -0.00757,
+      "events": 5
+    },
+    "GRC": {
+      "factor": -0.93964,
+      "events": 88
+    },
+    "GRL": {
+      "factor": -0.0,
+      "events": 2
+    },
+    "GTM": {
+      "factor": 0.67411,
+      "events": 47
+    },
+    "GUM": {
+      "factor": -1.91001,
+      "events": 14
+    },
+    "GUY": {
+      "factor": -0.00894,
+      "events": 1
+    },
+    "HND": {
+      "factor": -0.51722,
+      "events": 13
+    },
+    "HRV": {
+      "factor": -1.1614,
+      "events": 3
+    },
+    "HTI": {
+      "factor": 0.45582,
+      "events": 3
+    },
+    "IDN": {
+      "factor": -0.42785,
+      "events": 954
+    },
+    "IND": {
+      "factor": 0.67561,
+      "events": 162
+    },
+    "IOT": {
+      "factor": 0.0,
+      "events": 1
+    },
+    "IRN": {
+      "factor": 1.32576,
+      "events": 183
+    },
+    "IRQ": {
+      "factor": 0.38537,
+      "events": 35
+    },
+    "ISL": {
+      "factor": -0.16451,
+      "events": 8
+    },
+    "ISR": {
+      "factor": -0.48527,
+      "events": 1
+    },
+    "ITA": {
+      "factor": 0.0025,
+      "events": 45
+    },
+    "JAM": {
+      "factor": -0.25389,
+      "events": 5
+    },
+    "JOR": {
+      "factor": -0.01586,
+      "events": 2
+    },
+    "JPN": {
+      "factor": -0.91438,
+      "events": 407
+    },
+    "KAZ": {
+      "factor": -0.62167,
+      "events": 28
+    },
+    "KEN": {
+      "factor": -0.00211,
+      "events": 3
+    },
+    "KGZ": {
+      "factor": -0.78107,
+      "events": 17
+    },
+    "KOR": {
+      "factor": -0.18119,
+      "events": 6
+    },
+    "KWT": {
+      "factor": -2e-05,
+      "events": 1
+    },
+    "LAO": {
+      "factor": -1.22661,
+      "events": 10
+    },
+    "LBN": {
+      "factor": -0.69585,
+      "events": 1
+    },
+    "LBR": {
+      "factor": -0.0001,
+      "events": 1
+    },
+    "LBY": {
+      "factor": -0.00214,
+      "events": 4
+    },
+    "MAR": {
+      "factor": 0.72957,
+      "events": 7
+    },
+    "MDG": {
+      "factor": -0.00388,
+      "events": 3
+    },
+    "MEX": {
+      "factor": -0.09596,
+      "events": 177
+    },
+    "MKD": {
+      "factor": -0.18025,
+      "events": 5
+    },
+    "MMR": {
+      "factor": -1.31539,
+      "events": 45
+    },
+    "MNG": {
+      "factor": -0.04411,
+      "events": 15
+    },
+    "MNP": {
+      "factor": -0.00042,
+      "events": 35
+    },
+    "MOZ": {
+      "factor": -1.33574,
+      "events": 3
+    },
+    "MWI": {
+      "factor": -0.94242,
+      "events": 2
+    },
+    "MYS": {
+      "factor": -0.51963,
+      "events": 4
+    },
+    "NAM": {
+      "factor": -0.00017,
+      "events": 3
+    },
+    "NCL": {
+      "factor": -0.00164,
+      "events": 34
+    },
+    "NGA": {
+      "factor": -0.00049,
+      "events": 1
+    },
+    "NIC": {
+      "factor": 0.90609,
+      "events": 39
+    },
+    "NIU": {
+      "factor": 0.0,
+      "events": 1
+    },
+    "NLD": {
+      "factor": -0.74951,
+      "events": 1
+    },
+    "NOR": {
+      "factor": -1e-05,
+      "events": 9
+    },
+    "NPL": {
+      "factor": -0.13234,
+      "events": 11
+    },
+    "NZL": {
+      "factor": -1.18736,
+      "events": 128
+    },
+    "PAK": {
+      "factor": 1.2362,
+      "events": 85
+    },
+    "PAN": {
+      "factor": -1.29495,
+      "events": 51
+    },
+    "PER": {
+      "factor": -0.78961,
+      "events": 146
+    },
+    "PHL": {
+      "factor": -1.28988,
+      "events": 377
+    },
+    "PLW": {
+      "factor": -0.0,
+      "events": 2
+    },
+    "PNG": {
+      "factor": -1.11401,
+      "events": 594
+    },
+    "POL": {
+      "factor": -0.05308,
+      "events": 34
+    },
+    "PRI": {
+      "factor": -0.50462,
+      "events": 7
+    },
+    "PRK": {
+      "factor": -0.01891,
+      "events": 4
+    },
+    "PRT": {
+      "factor": 0.12783,
+      "events": 12
+    },
+    "PRY": {
+      "factor": -0.00072,
+      "events": 1
+    },
+    "PYF": {
+      "factor": 0.0,
+      "events": 1
+    },
+    "ROU": {
+      "factor": -0.52494,
+      "events": 8
+    },
+    "RUS": {
+      "factor": 0.11168,
+      "events": 236
+    },
+    "RWA": {
+      "factor": -0.05479,
+      "events": 1
+    },
+    "SAU": {
+      "factor": 0.02104,
+      "events": 3
+    },
+    "SDN": {
+      "factor": -0.62641,
+      "events": 54
+    },
+    "SGS": {
+      "factor": 0.0,
+      "events": 86
+    },
+    "SHN": {
+      "factor": -0.0,
+      "events": 5
+    },
+    "SLB": {
+      "factor": -1.7606,
+      "events": 286
+    },
+    "SLV": {
+      "factor": -0.9409,
+      "events": 18
+    },
+    "SOM": {
+      "factor": -0.0018,
+      "events": 3
+    },
+    "SRB": {
+      "factor": -0.6413,
+      "events": 8
+    },
+    "SVN": {
+      "factor": -0.01962,
+      "events": 3
+    },
+    "SWE": {
+      "factor": -0.00027,
+      "events": 1
+    },
+    "SYR": {
+      "factor": -2e-05,
+      "events": 1
+    },
+    "THA": {
+      "factor": -0.50382,
+      "events": 2
+    },
+    "TJK": {
+      "factor": -0.43228,
+      "events": 18
+    },
+    "TKM": {
+      "factor": 0.13247,
+      "events": 6
+    },
+    "TLS": {
+      "factor": -0.009,
+      "events": 3
+    },
+    "TON": {
+      "factor": -0.83913,
+      "events": 152
+    },
+    "TTO": {
+      "factor": -0.46287,
+      "events": 8
+    },
+    "TUN": {
+      "factor": -0.0001,
+      "events": 3
+    },
+    "TUR": {
+      "factor": 0.21778,
+      "events": 106
+    },
+    "TWN": {
+      "factor": -1.09978,
+      "events": 89
+    },
+    "TZA": {
+      "factor": -1.23399,
+      "events": 15
+    },
+    "UGA": {
+      "factor": -0.85182,
+      "events": 2
+    },
+    "USA": {
+      "factor": -1.8015,
+      "events": 706
+    },
+    "UZB": {
+      "factor": -1.56026,
+      "events": 9
+    },
+    "VEN": {
+      "factor": -0.07648,
+      "events": 35
+    },
+    "VGB": {
+      "factor": -0.00555,
+      "events": 1
+    },
+    "VNM": {
+      "factor": -0.47675,
+      "events": 4
+    },
+    "VUT": {
+      "factor": -1.41657,
+      "events": 358
+    },
+    "WLF": {
+      "factor": 0.13288,
+      "events": 21
+    },
+    "WSM": {
+      "factor": -0.0002,
+      "events": 34
+    },
+    "YEM": {
+      "factor": 2.03133,
+      "events": 13
+    },
+    "ZAF": {
+      "factor": -1.36325,
+      "events": 167
+    },
+    "ZMB": {
+      "factor": -0.13777,
+      "events": 31
+    },
+    "ZWE": {
+      "factor": -0.00012,
+      "events": 5
+    }
+  },
+  "region": {
+    "East Asia & Pacific": {
+      "factor": 0.0107,
+      "events": 4001
+    },
+    "Europe & Central Asia": {
+      "factor": 0.20333,
+      "events": 758
+    },
+    "Latin America & Caribbean": {
+      "factor": -0.07147,
+      "events": 1092
+    },
+    "Middle East, North Africa, Afghanistan & Pakistan": {
+      "factor": 1.04165,
+      "events": 410
+    },
+    "North America": {
+      "factor": -1.80346,
+      "events": 773
+    },
+    "South Asia": {
+      "factor": 0.53828,
+      "events": 193
+    },
+    "Sub-Saharan Africa": {
+      "factor": -0.59339,
+      "events": 366
+    },
+    "Unknown": {
+      "factor": -1.09899,
+      "events": 606
+    }
+  }
+}
