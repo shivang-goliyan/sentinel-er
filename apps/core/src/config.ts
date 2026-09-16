@@ -19,6 +19,7 @@ const Env = z.object({
   DEMO_INJECT_FAULT: z.string().default(''),
   DATABASE_PATH: z.string().default('data/sentinel.db'),
   TAPE_DIR: z.string().default('data/tapes'),
+  ARTIFACTS_DIR: z.string().default('data/artifacts'),
   TAPE_MODE_DEFAULT: z.enum(['live', 'record', 'replay', 'live-with-fallback']).default('live-with-fallback'),
   SCIENCE_URL: z.string().default('http://127.0.0.1:8001'),
   LLM_CHAIN_VOICE: z.string().default('gemini:gemini-3.5-flash-lite,groq:openai/gpt-oss-20b'),
@@ -30,7 +31,12 @@ const Env = z.object({
   VOICE_LISTEN: flag.default(false),
 })
 
-export type Config = z.infer<typeof Env> & { operatorPasscode: string; databasePath: string; tapeDir: string }
+export type Config = z.infer<typeof Env> & {
+  operatorPasscode: string
+  databasePath: string
+  tapeDir: string
+  artifactsDir: string
+}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = Env.safeParse(env)
@@ -46,5 +52,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     console.warn('OPERATOR_PASSCODE not set, using the dev passcode')
   }
   const inRepo = (p: string) => (p === ':memory:' || isAbsolute(p) ? p : resolve(repoRoot, p))
-  return { ...c, operatorPasscode: passcode, databasePath: inRepo(c.DATABASE_PATH), tapeDir: inRepo(c.TAPE_DIR) }
+  return {
+    ...c,
+    operatorPasscode: passcode,
+    databasePath: inRepo(c.DATABASE_PATH),
+    tapeDir: inRepo(c.TAPE_DIR),
+    artifactsDir: inRepo(c.ARTIFACTS_DIR),
+  }
 }

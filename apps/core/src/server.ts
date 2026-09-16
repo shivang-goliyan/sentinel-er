@@ -7,6 +7,7 @@ import type { Config } from './config.ts'
 import type { Db } from './db/index.ts'
 import type { FactStore } from './facts/store.ts'
 import type { LogChain } from './log/chain.ts'
+import { registerArtifacts } from './routes/artifacts.ts'
 import { registerLog } from './routes/log.ts'
 import { registerOperator } from './routes/operator.ts'
 import { registerStream } from './routes/stream.ts'
@@ -56,6 +57,7 @@ export async function buildServer(deps: Omit<Deps, 'requireOperator' | 'voice'>,
   registerLog(app, full)
   registerOperator(app, full)
   await registerVoice(app, full)
+  registerArtifacts(app, full)
 
   const startedAt = Date.now()
   app.get('/api/health', async () => ({

@@ -35,6 +35,27 @@ function matches(n: FoundNumber, f: Fact): boolean {
   return shown !== null && close(n.value, shown, { abs: 0 })
 }
 
+const STOP = new Set(['with', 'from', 'that', 'this', 'have', 'there', 'their', 'about', 'which', 'expected', 'estimate'])
+const words = (t: string) => new Set(t.toLowerCase().match(/[a-z]{4,}/g)?.filter((w) => !STOP.has(w)) ?? [])
+
+// When a number matches nothing, point at the fact the sentence was probably about, so the
+// block can show what the source actually says.
+function likelyFact(n: FoundNumber, text: string, facts: Fact[]): Fact | undefined {
+  const around = words(text.slice(Math.max(0, n.start - 60), n.end + 60))
+  let best: Fact | undefined
+  let bestScore = 0
+  for (const f of facts) {
+    if (typeof f.value !== 'number') continue
+    let score = 0
+    for (const w of words(`${f.label} ${f.unit}`)) if (around.has(w) || around.has(`${w}s`) || around.has(w.replace(/s$/, ''))) score++
+    if (score > bestScore) {
+      best = f
+      bestScore = score
+    }
+  }
+  return best
+}
+
 /**
  * Numbers may only enter text as {Fxx}. Anything else is checked against the run's facts.
  * `facts` should be every fact of the run: ids are looked up among all of them, bare numbers
@@ -64,6 +85,7 @@ export function verify(text: string, facts: Fact[], channel: VerifyChannel): Ver
     for (const n of findNumbers(scan)) {
       if (ALWAYS_OK.has(n.text)) continue
       const hit = current.find((f) => matches(n, f))
+      const about = hit ?? likelyFact(n, scan, current)
       if (hit && channel === 'voice') {
         uncitedOk++
         factIds.push(hit.id)
@@ -72,7 +94,7 @@ export function verify(text: string, facts: Fact[], channel: VerifyChannel): Ver
         findings.push({
           kind: 'bare_number',
           text: n.text,
-          ...(hit ? { fact_id: hit.id, expected: hit.display, source: hit.source } : {}),
+          ...(about ? { fact_id: about.id, expected: about.display, source: about.source } : {}),
         })
       }
     }

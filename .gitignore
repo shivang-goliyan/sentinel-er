@@ -20,6 +20,7 @@ __pycache__/
 
 # raw downloads get rebuilt by the scripts; recorded demo tapes are kept
 data/raw/
+data/artifacts/
 data/tapes/*
 !data/tapes/demo/
 ml/**/raw/
