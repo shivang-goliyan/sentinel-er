@@ -1,0 +1,25 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+.env
+.env.*
+!.env.example
+
+# sqlite
+*.db
+*.db-wal
+*.db-shm
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# raw downloads get rebuilt by the scripts; recorded demo tapes are kept
+data/raw/
+data/tapes/*
+!data/tapes/demo/
+ml/**/raw/
