@@ -85,6 +85,10 @@ export type SitrepView = {
 
 export type Stamped<T> = T & { ts: string; seq: number; run_id: string | null }
 
+export type LayerView = Stamped<PayloadOf<'layer'>>
+// run id (or NO_RUN) → layer name → latest layer
+export const NO_RUN = '-'
+
 export type ConsoleState = {
   head: number
   crew: Partial<Record<Actor, CrewLine>>
@@ -119,6 +123,7 @@ export type ConsoleState = {
   fallbacks: Stamped<PayloadOf<'fallback.used'>>[]
   faults: Stamped<PayloadOf<'fault.injected'>>[]
   errors: Stamped<PayloadOf<'error'>>[]
+  layers: Record<string, Record<string, LayerView>>
   feed: LogEntry[]
 }
 
@@ -154,6 +159,7 @@ export function emptyState(): ConsoleState {
     fallbacks: [],
     faults: [],
     errors: [],
+    layers: {},
     feed: [],
   }
 }
@@ -186,7 +192,10 @@ export function fold(state: ConsoleState, e: LogEntry): ConsoleState {
   // entries arrive at-least-once over SSE; anything at or below head is already in
   if (e.seq <= state.head) return state
 
-  let s: ConsoleState = { ...state, head: e.seq, feed: capped(state.feed, e, FEED_LIMIT) }
+  // the feed only needs a one-liner; map payloads can be hundreds of KB
+  const forFeed: LogEntry =
+    e.kind === 'layer' ? { ...e, payload: { ...e.payload, geojson: { type: 'FeatureCollection', features: [] } } } : e
+  let s: ConsoleState = { ...state, head: e.seq, feed: capped(state.feed, forFeed, FEED_LIMIT) }
 
   switch (e.kind) {
     case 'status':
@@ -453,11 +462,21 @@ export function fold(state: ConsoleState, e: LogEntry): ConsoleState {
       s.errors = capped(s.errors, stamp(e, e.payload))
       break
 
+    case 'layer': {
+      const key = e.run_id ?? NO_RUN
+      s.layers = { ...s.layers, [key]: { ...(s.layers[key] ?? {}), [e.payload.name]: stamp(e, e.payload) } }
+      break
+    }
+
     case 'note':
       break
   }
 
   return s
+}
+
+export function layersFor(s: ConsoleState, runId: string | null): Record<string, LayerView> {
+  return s.layers[runId ?? NO_RUN] ?? {}
 }
 
 export function foldAll(entries: LogEntry[], start: ConsoleState = emptyState()): ConsoleState {

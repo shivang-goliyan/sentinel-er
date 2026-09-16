@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { LogEntry, type Fact, type LogEntry as Entry } from '@sentinel/shared'
-import { activeRun, currentFacts, emptyState, endedCalls, FEED_LIMIT, fold, foldAll, pendingApprovals } from '../src/store/fold'
+import { activeRun, currentFacts, emptyState, endedCalls, FEED_LIMIT, fold, foldAll, layersFor, pendingApprovals } from '../src/store/fold'
 import { feedLine, tPlus } from '../src/lib/format'
 
 const HASH = 'a'.repeat(64)
@@ -176,5 +176,29 @@ describe('format', () => {
     seq = 0
     const e = entry('anchor.submitted', { head_seq: 12, head_hash: HASH }, { run: null })
     expect(feedLine(e).text).toContain('#12')
+  })
+})
+
+describe('map layers', () => {
+  it('keeps latest layer per run', () => {
+    const layer = (n: number) => ({
+      name: 'hospitals',
+      title: 'Hospitals',
+      source: 'FEMA',
+      geojson: { type: 'FeatureCollection', features: Array.from({ length: n }, () => ({ type: 'Feature' })) },
+    })
+    const s = foldAll([entry('layer', layer(2)), entry('layer', layer(3)), entry('layer', layer(1), { run: 'run-2' })])
+    expect(layersFor(s, 'run-1').hospitals?.geojson.features).toHaveLength(3)
+    expect(layersFor(s, 'run-2').hospitals?.geojson.features).toHaveLength(1)
+    expect(layersFor(s, null)).toEqual({})
+  })
+
+  it('feed drops the geometry', () => {
+    const s = foldAll([
+      entry('layer', { name: 'zips', title: 'ZIPs', source: 'HHS', geojson: { type: 'FeatureCollection', features: [{}] } }),
+    ])
+    const last = s.feed[s.feed.length - 1]!
+    expect(last.kind === 'layer' && last.payload.geojson.features).toEqual([])
+    expect(feedLine(last).text).toContain('ZIPs')
   })
 })

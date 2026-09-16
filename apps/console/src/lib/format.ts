@@ -225,6 +225,8 @@ export function feedLine(e: LogEntry): FeedLine {
       }
     case 'note':
       return { tag: 'note', text: e.payload.text, tone: 'plain' }
+    case 'layer':
+      return { tag: 'map', text: `Map layer: ${e.payload.title} (${e.payload.source})`, tone: 'quiet' }
     case 'error':
       return { tag: 'error', text: `${e.payload.where}: ${e.payload.message}`, tone: 'bad' }
   }

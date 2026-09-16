@@ -4,6 +4,8 @@ import { Fact, Finding, VerifyChannel } from './facts.ts'
 
 const callBase = { call_sid: z.string() }
 
+export const MAX_LAYER_BYTES = 400_000
+
 // One entry per kind. The console folds these, so every screen state has to be derivable from them.
 export const LogBody = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('event.detected'), payload: z.object({ event: HazardEvent }) }),
@@ -160,6 +162,16 @@ export const LogBody = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('whitelist.changed'),
     payload: z.object({ label: z.string(), role: z.string(), masked: z.string(), removed: z.boolean().default(false) }),
+  }),
+  // map data for the console; the orchestrator keeps each one under MAX_LAYER_BYTES
+  z.object({
+    kind: z.literal('layer'),
+    payload: z.object({
+      name: z.string(),
+      title: z.string(),
+      source: z.string(),
+      geojson: z.object({ type: z.literal('FeatureCollection'), features: z.array(z.any()) }),
+    }),
   }),
   z.object({ kind: z.literal('note'), payload: z.object({ text: z.string() }) }),
   z.object({ kind: z.literal('error'), payload: z.object({ where: z.string(), message: z.string() }) }),
