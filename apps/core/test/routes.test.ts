@@ -65,6 +65,12 @@ describe('log routes', () => {
     expect(body.head).toBe(5)
   })
 
+  it('rejects oversized pages', async () => {
+    const { app: a } = await app()
+    const res = await a.inject({ method: 'GET', url: '/api/log?limit=5000' })
+    expect(res.statusCode).toBe(400)
+  })
+
   it('reports an intact chain', async () => {
     const { app: a, chain } = await app()
     chain.append('system', 'note', { text: 'x' })

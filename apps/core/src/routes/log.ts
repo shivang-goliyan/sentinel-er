@@ -8,9 +8,10 @@ const Page = z.object({
 })
 
 export function registerLog(app: FastifyInstance, { chain }: Deps) {
-  app.get('/api/log', async (req) => {
-    const { after, limit } = Page.parse(req.query)
-    return { entries: chain.after(after, limit), head: chain.head().seq }
+  app.get('/api/log', async (req, reply) => {
+    const page = Page.safeParse(req.query)
+    if (!page.success) return reply.code(400).send({ error: 'after must be 0 or more, and limit between 1 and 1000.' })
+    return { entries: chain.after(page.data.after, page.data.limit), head: chain.head().seq }
   })
 
   app.get('/api/log/verify', async () => chain.verify())
