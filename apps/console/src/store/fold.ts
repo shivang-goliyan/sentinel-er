@@ -86,6 +86,9 @@ export type SitrepView = {
 export type Stamped<T> = T & { ts: string; seq: number; run_id: string | null }
 
 export type LayerView = Stamped<PayloadOf<'layer'>>
+
+// Fact ids restart at F1 for every run, so the console keys them by run as well.
+export const factRef = (runId: string, id: string) => `${runId}/${id}`
 // run id (or NO_RUN) → layer name → latest layer
 export const NO_RUN = '-'
 
@@ -258,14 +261,15 @@ export function fold(state: ConsoleState, e: LogEntry): ConsoleState {
 
     case 'fact': {
       const f = e.payload.fact
-      s.facts = { ...s.facts, [f.id]: f }
-      s.factOrder = [...s.factOrder, f.id]
+      const ref = factRef(f.run_id, f.id)
+      s.facts = { ...s.facts, [ref]: f }
+      s.factOrder = [...s.factOrder, ref]
       const scopedKey = `${f.run_id}:${f.key}`
       const prev = s.latestFactByKey[scopedKey]
-      s.latestFactByKey = { ...s.latestFactByKey, [scopedKey]: f.id }
+      s.latestFactByKey = { ...s.latestFactByKey, [scopedKey]: ref }
       const gone = { ...s.superseded }
-      if (f.supersedes) gone[f.supersedes] = true
-      if (prev && prev !== f.id) gone[prev] = true
+      if (f.supersedes) gone[factRef(f.run_id, f.supersedes)] = true
+      if (prev && prev !== ref) gone[prev] = true
       s.superseded = gone
       break
     }
@@ -475,8 +479,11 @@ export function fold(state: ConsoleState, e: LogEntry): ConsoleState {
   return s
 }
 
+// a stable empty object: selectors must return the same reference when nothing changed
+const NO_LAYERS: Record<string, LayerView> = Object.freeze({}) as Record<string, LayerView>
+
 export function layersFor(s: ConsoleState, runId: string | null): Record<string, LayerView> {
-  return s.layers[runId ?? NO_RUN] ?? {}
+  return s.layers[runId ?? NO_RUN] ?? NO_LAYERS
 }
 
 export function foldAll(entries: LogEntry[], start: ConsoleState = emptyState()): ConsoleState {
@@ -494,8 +501,9 @@ export function activeRun(s: ConsoleState): RunView | null {
 export function currentFacts(s: Pick<ConsoleState, 'factOrder' | 'facts' | 'superseded'>, runId: string | null): Fact[] {
   if (!runId) return []
   return s.factOrder
-    .map((id) => s.facts[id])
-    .filter((f): f is Fact => !!f && f.run_id === runId && !s.superseded[f.id])
+    .filter((ref) => !s.superseded[ref])
+    .map((ref) => s.facts[ref])
+    .filter((f): f is Fact => !!f && f.run_id === runId)
 }
 
 export function pendingApprovals(s: Pick<ConsoleState, 'approvalOrder' | 'approvals'>): ApprovalView[] {

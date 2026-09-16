@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { Fact } from '@sentinel/shared'
 import type { Tone } from '../lib/format'
 import { shortDate, utcTime } from '../lib/format'
+import { factRef } from '../store/fold'
 import { useConsole } from '../store/stream'
 
 export function Panel({
@@ -110,8 +111,11 @@ export function FactHover({ fact, children, className = '' }: { fact: Fact; chil
   )
 }
 
-export function FactChip({ id }: { id: string }) {
-  const fact = useConsole((s) => s.view.facts[id])
+export function FactChip({ id, runId }: { id: string; runId?: string | null }) {
+  const fact = useConsole((s) => {
+    const run = runId ?? s.view.activeRunId
+    return run ? s.view.facts[factRef(run, id)] : undefined
+  })
   if (!fact) {
     return (
       <span className="inline-flex h-[18px] items-center rounded-[2px] border border-bad/50 px-1 font-mono text-[10.5px] text-bad">

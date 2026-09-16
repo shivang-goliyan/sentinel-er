@@ -92,7 +92,7 @@ describe('fold', () => {
       entry('fact', { fact: fact('F3', 'hospital.y.beds', 90) }),
     ])
     expect(currentFacts(s, 'run-1').map((f) => f.id)).toEqual(['F2', 'F3'])
-    expect(s.superseded.F1).toBe(true)
+    expect(s.superseded['run-1/F1']).toBe(true)
   })
 
   it('follows a call end to end', () => {

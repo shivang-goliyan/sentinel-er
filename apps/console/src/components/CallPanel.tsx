@@ -12,7 +12,7 @@ const verdictTag = {
   block: <Tag tone="bad">blocked</Tag>,
 }
 
-function Line({ line }: { line: TranscriptLine }) {
+function Line({ line, runId }: { line: TranscriptLine; runId: string | null }) {
   if (line.who === 'tool' || line.who === 'system') {
     return (
       <li className="px-3 py-1 font-mono text-[11.5px] text-faint">
@@ -37,7 +37,7 @@ function Line({ line }: { line: TranscriptLine }) {
       {line.fact_ids?.length ? (
         <div className="mt-1 flex flex-wrap gap-1">
           {line.fact_ids.map((id) => (
-            <FactChip key={id} id={id} />
+            <FactChip key={id} id={id} runId={runId} />
           ))}
         </div>
       ) : null}
@@ -73,7 +73,7 @@ function ActiveCall({ call }: { call: CallView }) {
         {call.lines.length === 0 ? (
           <li className="px-3 py-2 text-[13px] text-muted">Connected. Waiting for the first words.</li>
         ) : (
-          call.lines.map((l) => <Line key={l.seq} line={l} />)
+          call.lines.map((l) => <Line key={l.seq} line={l} runId={call.run_id} />)
         )}
         <li ref={endRef} />
       </ol>
