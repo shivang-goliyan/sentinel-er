@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { missingSections, publishSitrepPdf, templateSitrep, writeSitrep, type Chat } from '../src/crew/analyst.ts'
 import { markdownToHtml, sitrepHtml } from '../src/pdf/render.ts'
+import { verify } from '../src/facts/verifier.ts'
 import { makeDeps } from './helpers.ts'
 
 const src = { name: 'FEMA Hospitals RAPT', retrieved_at: '2026-09-16T00:00:00Z', method: 'dataset' as const }
@@ -104,6 +105,36 @@ describe('sitrep heading', () => {
     const said = w.chain.after(0, 500).filter((e) => e.kind === 'status').map((e) => (e.payload as { text: string }).text)
     expect(said).toContain('Draft 1 is incomplete (missing Recommended actions, Sources and confidence), redrafting')
     expect(missingSections(`${whole}\n- which indicates that`)).toEqual(['Sources and confidence (it stops early)'])
+  })
+
+  it('names sources after checking', async () => {
+    const w = world()
+    w.facts.add(w.run, { key: 'exposure.pop_mmi.7', label: 'People at level seven', value: 31175, unit: 'people', source: { name: 'US Census 2020 block groups', retrieved_at: 'now', method: 'dataset' } })
+    const s = await writeSitrep({ ...w, runId: w.run, chat: replies(`## Situation\n- {F3} people, per {S3}.\n- Beds from {S1}.`) })
+    expect(s.template).toBe(false)
+    expect(s.text).toContain('31,175 people, per US Census 2020 block groups.')
+    expect(s.text).toContain('Beds from FEMA Hospitals RAPT.')
+  })
+
+  it('sends back made-up source ids', async () => {
+    const w = world()
+    const s = await writeSitrep({ ...w, runId: w.run, chat: replies('- Beds from {S9}.', '- Beds from {S1}.') })
+    expect(s.text).toContain('Beds from FEMA Hospitals RAPT.')
+    const said = w.chain.after(0, 500).filter((e) => e.kind === 'status').map((e) => (e.payload as { text: string }).text)
+    expect(said.some((t) => t.includes('{S9} are not on the list'))).toBe(true)
+  })
+
+  it('template stays short and clean', () => {
+    const w = world()
+    for (const z of ['22314', '22301', '22302', '22303', '22304']) {
+      w.facts.add(w.run, { key: `zip.${z}.at_risk`, label: 'Power-dependent residents at risk', value: 12, unit: 'people', source: { name: 'HHS emPOWER 2026', retrieved_at: 'now', method: 'api' } })
+    }
+    w.facts.add(w.run, { key: 'exposure.pop_mmi.9', label: 'People at level nine', value: 0, unit: 'people', source: src })
+    const t = templateSitrep(w.facts.latest(w.run))
+    expect(t.match(/residents at risk/g)).toHaveLength(3)
+    expect(t).not.toContain('level nine')
+    const v = verify(t, w.facts.all(w.run), 'sitrep')
+    expect(v.findings).toEqual([])
   })
 
   it('retries an empty draft', async () => {

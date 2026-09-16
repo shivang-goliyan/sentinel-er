@@ -24,3 +24,6 @@ data/artifacts/
 data/tapes/*
 !data/tapes/demo/
 ml/**/raw/
+
+# build caches
+*.tsbuildinfo

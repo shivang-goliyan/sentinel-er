@@ -55,6 +55,8 @@ const system = (setting: Setting) => `You write the situation report for a hospi
 Hard rules:
 - Every number must be written as its fact id in braces, e.g. {F12}. Never type digits or number words yourself — not for counts, times, percentages, dates, or ZIP codes. If you need a number that has no fact, leave it out.
 - Values on the sheet already include their units ("24 km", "41%"). Don't repeat the unit after the id, and don't state the same fact twice in one sentence.
+- Name sources only by their id in braces, e.g. {S3}; the source list gives the names. Never type a source's name or version yourself.
+- If a section has no facts, say so in one line.
 - Use only the facts provided. Do not invent hospitals, places, counts or sources.
 - Casualty figures are screening estimates with a range; say so.
 - No medical or triage advice. Recommended actions are about capacity, staffing, supplies, diversion and notification.
@@ -78,8 +80,30 @@ export function missingSections(text: string): string[] {
   return bullet && !dangling ? [] : ['Sources and confidence (it stops early)']
 }
 
-function sheet(facts: Fact[]): string {
-  return facts.map((f) => `${f.id} | ${f.key} | ${f.label} | ${f.display} | source: ${f.source.name}`).join('\n')
+// Source names carry digits ("Census 2020", "HAZUS 6.1"), so the model refers to them by id and
+// the names go in after the number check.
+function sourceIds(facts: Fact[]): Map<string, string> {
+  const ids = new Map<string, string>()
+  for (const f of facts) if (!ids.has(f.source.name)) ids.set(f.source.name, `S${ids.size + 1}`)
+  return ids
+}
+
+function sheet(facts: Fact[], sources: Map<string, string>): string {
+  const rows = facts.map((f) => `${f.id} | ${f.key} | ${f.label} | ${f.display} | ${sources.get(f.source.name)}`)
+  const list = [...sources].map(([name, id]) => `${id} | ${name}`)
+  return `Facts (id | key | label | value | source id):\n${rows.join('\n')}\n\nSources (id | name):\n${list.join('\n')}`
+}
+
+const SOURCE_REF = /\{(S\d+)\}/g
+
+function nameSources(text: string, sources: Map<string, string>): string {
+  const byId = new Map([...sources].map(([name, id]) => [id, name]))
+  return text.replace(SOURCE_REF, (whole, id: string) => byId.get(id) ?? whole)
+}
+
+const unknownSources = (text: string, sources: Map<string, string>) => {
+  const known = new Set(sources.values())
+  return [...text.matchAll(SOURCE_REF)].map((m) => m[0]).filter((ref) => !known.has(ref.slice(1, -1)))
 }
 
 function explain(findings: Finding[]): string {
@@ -88,29 +112,39 @@ function explain(findings: Finding[]): string {
       f.kind === 'unknown_fact'
         ? `- "${f.text}" is not a fact id on the sheet.`
         : `- "${f.text}" is a number typed directly${
-            f.fact_id ? `; the sheet says ${f.expected} ({${f.fact_id}}), cite that instead` : '; remove it or cite a fact'
+            f.fact_id ? `; if you meant ${f.fact_id}, write {${f.fact_id}} instead` : '; remove it, cite a fact, or if it is part of a source name use the source id'
           }.`,
     )
     .join('\n')
 }
 
 // The fallback: dull, complete, and it can't contain an unchecked number.
-export function templateSitrep(facts: Fact[], setting: Setting = 'drill'): string {
+const TEMPLATE_ZIPS = 3
+
+export function templateSitrep(facts: Fact[], setting: Setting = 'drill', sources = sourceIds(facts)): string {
   const lines = [HEADING[setting], '']
+  // the worst few ZIPs are enough on paper; the console has the rest
+  const zips = [...new Set(facts.filter((f) => f.key.startsWith('zip.')).map((f) => f.key.split('.')[1]))].slice(0, TEMPLATE_ZIPS)
+  const keep = (f: Fact) => {
+    if (f.key.startsWith('exposure.pop_mmi.') && f.value === 0) return false
+    if (f.key.startsWith('zip.')) return zips.includes(f.key.split('.')[1]!)
+    return true
+  }
   for (const s of SECTIONS) {
-    const picked = facts.filter((f) => s.prefixes.some((p) => f.key.startsWith(p)))
+    const picked = facts.filter((f) => s.prefixes.some((p) => f.key.startsWith(p)) && keep(f))
     if (!picked.length) continue
     lines.push(`## ${s.title}`, ...picked.map((f) => `- ${f.label}: {${f.id}}`), '')
   }
+  const has = (prefix: string) => facts.some((f) => f.key.startsWith(prefix))
+  lines.push('## Recommended actions')
+  if (has('surge.')) lines.push('- Pre-arrange diversion for the hospitals expected to fill first, and confirm staffing and supplies for the expected arrivals.')
+  else lines.push('- No hospital with a known bed count is in range; confirm capacity with the nearest receiving hospitals directly.')
+  if (has('zip.')) lines.push('- Notify county health and home medical equipment suppliers about power-dependent residents in the ZIP areas above.')
   lines.push(
-    '## Recommended actions',
-    '- Review the hospital surge figures above and pre-arrange diversion for hospitals expected to fill first.',
-    '- Confirm staffing and supplies for the expected arrivals.',
-    '- Notify county health and equipment suppliers about power-dependent residents in affected areas.',
     '',
     '## Sources and confidence',
     '- Casualty figures are screening estimates from a trained model and carry a range.',
-    '- Every figure links to its source on the console.',
+    ...[...sources.values()].map((id) => `- {${id}}`),
   )
   return lines.join('\n')
 }
@@ -121,6 +155,7 @@ export async function writeSitrep(d: SitrepDeps): Promise<Sitrep> {
   const chat = d.chat ?? llmChat
   const current = facts.latest(runId)
   const all = facts.all(runId)
+  const sources = sourceIds(current)
   chain.append('analyst', 'status', { text: `Writing the situation report from ${current.length} verified facts` }, runId)
 
   let feedback = ''
@@ -136,7 +171,7 @@ export async function writeSitrep(d: SitrepDeps): Promise<Sitrep> {
           { role: 'system', content: system(setting) },
           {
             role: 'user',
-            content: `Facts (id | key | label | value | source):\n${sheet(current)}${
+            content: `${sheet(current, sources)}${
               feedback ? `\n\nYour last draft was sent back:\n${feedback}\nFix only those problems.` : ''
             }`,
           },
@@ -165,6 +200,8 @@ export async function writeSitrep(d: SitrepDeps): Promise<Sitrep> {
     // whatever the model wrote on top, the heading is ours
     text = `${HEADING[setting]}\n\n${text.replace(/^\s*(?:#+\s*)?[^\n]*situation report[^\n]*\n+/i, '')}`
     const missing = missingSections(text)
+    const badRefs = unknownSources(text, sources)
+    if (badRefs.length) missing.push(`real source ids (${badRefs.join(', ')} are not on the list)`)
     if (missing.length) {
       chain.append('analyst', 'status', { text: `Draft ${attempt} is incomplete (missing ${missing.join(', ')}), redrafting`, state: 'working' }, runId)
       feedback = `- The draft stopped early or skipped sections. Missing: ${missing.join(', ')}. Write the whole report, every section.`
@@ -173,16 +210,16 @@ export async function writeSitrep(d: SitrepDeps): Promise<Sitrep> {
     const v = verify(text, all, 'sitrep')
     if (v.verdict !== 'block') {
       chain.append('verifier', 'verify.pass', { channel: 'sitrep', target: `sitrep draft ${attempt}`, findings: v.findings }, runId)
-      return finish(d, v.rendered, false, v.factIds)
+      return finish(d, nameSources(v.rendered, sources), false, v.factIds)
     }
     chain.append('verifier', 'verify.block', { channel: 'sitrep', target: `sitrep draft ${attempt}`, text, findings: v.findings }, runId)
     chain.append('analyst', 'status', { text: `Draft ${attempt} blocked by the verifier, redrafting`, state: 'working' }, runId)
     feedback = explain(v.findings)
   }
 
-  const fallback = verify(templateSitrep(current, setting), all, 'sitrep')
+  const fallback = verify(templateSitrep(current, setting, sources), all, 'sitrep')
   chain.append('verifier', 'verify.pass', { channel: 'sitrep', target: 'template sitrep', findings: fallback.findings }, runId)
-  return finish(d, fallback.rendered, true, fallback.factIds)
+  return finish(d, nameSources(fallback.rendered, sources), true, fallback.factIds)
 }
 
 export async function publishSitrepPdf(d: SitrepDeps, sitrep: Sitrep, title: string, artifactsDir: string) {
