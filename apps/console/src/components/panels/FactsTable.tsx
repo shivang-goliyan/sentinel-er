@@ -28,7 +28,7 @@ export function FactsTable() {
           </span>
         ) : null
       }
-      className="flex-1"
+      className="flex-[0.7]"
       bodyClass="overflow-y-auto"
       delay={240}
     >

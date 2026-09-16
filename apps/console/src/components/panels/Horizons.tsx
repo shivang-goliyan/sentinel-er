@@ -3,6 +3,9 @@ import type { Fact } from '@sentinel/shared'
 import { currentFacts } from '../../store/fold'
 import { useConsole } from '../../store/stream'
 import { EmptyState, FactHover, Panel } from '../ui'
+import { CasualtyCard, useCasualties } from './Casualties'
+import { LifelineList } from './Lifeline'
+import { SurgeTable, useSurge } from './Surge'
 
 function useRunFacts(prefixes: string[]): Fact[] {
   const facts = useConsole((s) => s.view.facts)
@@ -48,24 +51,30 @@ function FactGrid({ facts }: { facts: Fact[] }) {
 }
 
 export function NowPanel() {
-  const facts = useRunFacts(['casualty.', 'surge.', 'exposure.'])
+  const casualties = useCasualties()
+  const surge = useSurge()
   return (
     <Panel
       title="Now"
       aside={<HorizonTitle index="01" name="Acute" span="minutes to hours" />}
-      className="flex-[1.35]"
-      bodyClass="overflow-y-auto"
+      className="flex-[1.9]"
+      bodyClass="flex flex-col"
       delay={100}
     >
-      {facts.length ? (
-        <FactGrid facts={facts} />
+      {casualties || surge.length ? (
+        <>
+          <div className="shrink-0 border-b border-line">
+            <CasualtyCard />
+          </div>
+          <SurgeTable />
+        </>
       ) : (
         <div className="grid h-full grid-cols-2 divide-x divide-line">
           <EmptyState title="Casualty estimate">
             Expected deaths and injuries with an error band and the features that drove them. Appears when the ledger reaches Casualties.
           </EmptyState>
           <EmptyState title="Hospital surge">
-            Which hospital fills first, arrivals at 1, 3 and 6 hours against real bed counts, and where to divert. Appears when the ledger reaches Surge.
+            Which hospital fills first, arrivals at 3 and 6 hours against real bed counts, and where to divert. Appears when the ledger reaches Surge.
           </EmptyState>
         </div>
       )}
@@ -89,16 +98,9 @@ export function NextPanel() {
 }
 
 export function CommunityPanel() {
-  const facts = useRunFacts(['lifeline.'])
   return (
-    <Panel title="Community" aside={<HorizonTitle index="03" name="Lifeline" span="power-dependent" />} className="flex-1" bodyClass="overflow-y-auto" delay={200}>
-      {facts.length ? (
-        <FactGrid facts={facts} />
-      ) : (
-        <EmptyState title="Lifeline by ZIP">
-          Medicare patients on powered equipment at home, from HHS emPOWER aggregate counts, set against the chance their power fails. We call the county, suppliers and shelters — never patients.
-        </EmptyState>
-      )}
+    <Panel title="Community" aside={<HorizonTitle index="03" name="Lifeline" span="power-dependent" />} className="flex-1" delay={200}>
+      <LifelineList />
     </Panel>
   )
 }

@@ -5,6 +5,24 @@ import type { CrewLine } from '../store/fold'
 import { useConsole } from '../store/stream'
 import { Panel } from './ui'
 
+function DronePlan() {
+  const plan = useConsole((s) => {
+    const run = s.view.activeRunId
+    return run ? s.view.artifacts.findLast((a) => a.run_id === run && a.type === 'drone_plan') : undefined
+  })
+  if (!plan) return null
+  return (
+    <a
+      href={plan.url}
+      download
+      title="Survey flight plan for QGroundControl"
+      className="shrink-0 rounded-[2px] border border-line-strong px-1 font-mono text-[10.5px] leading-[14px] text-info hover:border-info hover:text-paper"
+    >
+      {plan.name} ↓
+    </a>
+  )
+}
+
 function StateMark({ line }: { line: CrewLine | undefined }) {
   if (!line || line.state === 'idle') return <span className="size-2 rounded-full border border-faint" />
   if (line.state === 'working') {
@@ -33,7 +51,12 @@ function Row({ actor, line }: { actor: Actor; line: CrewLine | undefined }) {
         <p className={`line-clamp-2 text-[13px] leading-snug ${tone}`} title={line?.text}>
           {line ? line.text : actorJob(actor)}
         </p>
-        {line ? <p className="num mt-0.5 text-[10.5px] text-faint">{utcTime(line.ts)} UTC</p> : null}
+        {line ? (
+          <p className="num mt-0.5 flex items-center gap-2 whitespace-nowrap text-[10.5px] text-faint">
+            {utcTime(line.ts)} UTC
+            {actor === 'logistics' ? <DronePlan /> : null}
+          </p>
+        ) : null}
       </div>
     </li>
   )

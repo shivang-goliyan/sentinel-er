@@ -111,28 +111,48 @@ export function FactHover({ fact, children, className = '' }: { fact: Fact; chil
   )
 }
 
-export function FactChip({ id, runId }: { id: string; runId?: string | null }) {
+// show="value" renders the fact's own display text; the source is still one hover away
+export function FactChip({
+  id,
+  runId,
+  show = 'id',
+  className = '',
+}: {
+  id: string | undefined
+  runId?: string | null
+  show?: 'id' | 'value'
+  className?: string
+}) {
   const fact = useConsole((s) => {
     const run = runId ?? s.view.activeRunId
-    return run ? s.view.facts[factRef(run, id)] : undefined
+    return run && id ? s.view.facts[factRef(run, id)] : undefined
   })
   if (!fact) {
+    if (!id && show === 'value') return <span className="text-faint">—</span>
     return (
-      <span className="inline-flex h-[18px] items-center rounded-[2px] border border-bad/50 px-1 font-mono text-[10.5px] text-bad">
-        {id}?
+      <span className="inline-flex h-[18px] items-center rounded-[2px] border border-bad/50 px-1 font-mono text-[10.5px] text-bad" title="Fact not found">
+        {id ?? 'fact'}?
       </span>
     )
   }
-  const chip = (
-    <FactHover
-      fact={fact}
-      className="inline-flex h-[18px] cursor-help items-center rounded-[2px] border border-line-strong bg-ink-800 px-1 font-mono text-[10.5px] text-paper-dim hover:border-drill/60 hover:text-paper"
-    >
-      {fact.id}
-    </FactHover>
-  )
+  const chip =
+    show === 'value' ? (
+      <FactHover
+        fact={fact}
+        className={`cursor-help underline decoration-line-strong decoration-dotted underline-offset-[3px] hover:text-paper hover:decoration-drill ${className}`}
+      >
+        {fact.display}
+      </FactHover>
+    ) : (
+      <FactHover
+        fact={fact}
+        className="inline-flex h-[18px] cursor-help items-center rounded-[2px] border border-line-strong bg-ink-800 px-1 font-mono text-[10.5px] text-paper-dim hover:border-drill/60 hover:text-paper"
+      >
+        {fact.id}
+      </FactHover>
+    )
   return fact.source.url ? (
-    <a href={fact.source.url} target="_blank" rel="noreferrer">
+    <a href={fact.source.url} target="_blank" rel="noreferrer" className="min-w-0">
       {chip}
     </a>
   ) : (

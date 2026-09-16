@@ -25,7 +25,7 @@ export function App() {
         </div>
         <div className="flex min-h-0 flex-col gap-2">
           <NowPanel />
-          <div className="flex min-h-0 flex-1 gap-2">
+          <div className="flex min-h-0 flex-[1.3] gap-2">
             <NextPanel />
             <CommunityPanel />
           </div>
