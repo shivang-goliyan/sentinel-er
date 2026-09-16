@@ -176,6 +176,7 @@ export class Orchestrator {
     }
     const inDamage = Object.entries(exp.bands).filter(([b]) => Number(b) >= Math.round(damageMmi)).reduce((t, [, v]) => t + v, 0)
     facts.add(runId, { key: 'exposure.pop_damaging', label: `People in damaging shaking, level ${roman(damageMmi)} and above`, value: Math.round(inDamage), unit: 'people', tolerance: { rel: 0.02 }, source: popSource })
+    this.status(runId, 'analyst', `About ${(inDamage / 1e6).toFixed(1)} million people in damaging shaking; casualty estimate next`, 'done')
     this.deps.chain.append('analyst', 'model.output', { model: 'exposure', version: 'census-2020-bg', outputs: { bands: exp.bands, searched_km: Math.round(exp.searched_km), points: exp.points, calibrated: model.calibrated } }, runId)
 
     // --- hospitals ---

@@ -122,12 +122,16 @@ export function MapPanel() {
               type="circle"
               filter={['>', ['coalesce', ['get', 'power_dependent'], 0], 0]}
               paint={{
-                'circle-radius': ['interpolate', ['linear'], ['sqrt', ['coalesce', ['get', 'power_dependent'], 0]], 3, 2, 30, 9],
+                'circle-radius': [
+                  'interpolate', ['linear'], ['zoom'],
+                  8, ['interpolate', ['linear'], ['sqrt', ['coalesce', ['get', 'power_dependent'], 0]], 3, 1.2, 30, 4.5],
+                  11, ['interpolate', ['linear'], ['sqrt', ['coalesce', ['get', 'power_dependent'], 0]], 3, 3, 30, 12],
+                ],
                 'circle-color': '#f3b63c',
-                'circle-opacity': 0.28,
+                'circle-opacity': 0.18,
                 'circle-stroke-color': '#f3b63c',
-                'circle-stroke-width': 0.8,
-                'circle-stroke-opacity': 0.7,
+                'circle-stroke-width': 0.6,
+                'circle-stroke-opacity': 0.45,
               }}
             />
           </Source>
@@ -167,7 +171,7 @@ export function MapPanel() {
       </Map>
 
       {any ? (
-        <div className="pointer-events-none absolute bottom-1.5 left-1.5 flex flex-wrap gap-x-3 gap-y-1 rounded-sm bg-ink-950/80 px-2 py-1 font-label text-[11px] uppercase tracking-wide text-paper-dim">
+        <div className="pointer-events-none absolute top-1.5 left-1.5 right-11 flex flex-wrap gap-x-3 gap-y-1 rounded-sm bg-ink-950/80 px-2 py-1 font-label text-[11px] uppercase tracking-wide text-paper-dim">
           {shaking ? <LegendDot color="#ff5d4f" label="Shaking bands" ring /> : null}
           {hospitals ? <LegendDot color="#ece8dd" label="Hospitals · size = beds" /> : null}
           {zips ? <LegendDot color="#f3b63c" label="Power-dependent residents" ring /> : null}
